@@ -302,7 +302,7 @@ static int gost_imit_cleanup(EVP_MD_CTX *ctx);
 /* Control function, knows how to set MAC key.*/
 static int gost_imit_ctrl(EVP_MD_CTX *ctx, int type, int arg, void *ptr);
 
-GOST_digest Gost28147_89_MAC_digest = {
+GOST_digest Gost28147_89_MAC_digest_legacy = {
     .nid = NID_id_Gost28147_89_MAC,
     .result_size = 4,
     .input_blocksize = 8,
@@ -316,7 +316,7 @@ GOST_digest Gost28147_89_MAC_digest = {
     .ctrl = gost_imit_ctrl,
 };
 
-GOST_digest Gost28147_89_mac_12_digest = {
+GOST_digest Gost28147_89_mac_12_digest_legacy = {
     .nid = NID_gost_mac_12,
     .result_size = 4,
     .input_blocksize = 8,
@@ -331,34 +331,6 @@ GOST_digest Gost28147_89_mac_12_digest = {
 };
 
 /*
- * Correspondence between gost parameter OIDs and substitution blocks
- * NID field is filed by register_gost_NID function in engine.c
- * upon engine initialization
- */
-
-static struct gost_cipher_info gost_cipher_list[] = {
-    /*- NID *//*
-     * Subst block
-     *//*
-     * Key meshing
-     */
-    /*
-     * {NID_id_GostR3411_94_CryptoProParamSet,&GostR3411_94_CryptoProParamSet,0},
-     */
-    {NID_id_Gost28147_89_CryptoPro_A_ParamSet, &Gost28147_CryptoProParamSetA,
-     1},
-    {NID_id_Gost28147_89_CryptoPro_B_ParamSet, &Gost28147_CryptoProParamSetB,
-     1},
-    {NID_id_Gost28147_89_CryptoPro_C_ParamSet, &Gost28147_CryptoProParamSetC,
-     1},
-    {NID_id_Gost28147_89_CryptoPro_D_ParamSet, &Gost28147_CryptoProParamSetD,
-     1},
-    {NID_id_tc26_gost_28147_param_Z, &Gost28147_TC26ParamSetZ, 1},
-    {NID_id_Gost28147_89_TestParamSet, &Gost28147_TestParamSet, 1},
-    {NID_undef, NULL, 0}
-};
-
-/*
  * get encryption parameters from crypto network settings FIXME For now we
  * use environment var CRYPT_PARAMS as place to store these settings.
  * Actually, it is better to use engine control command, read from
@@ -367,15 +339,11 @@ static struct gost_cipher_info gost_cipher_list[] = {
 const struct gost_cipher_info *get_encryption_params(ASN1_OBJECT *obj)
 {
     int nid;
-    struct gost_cipher_info *param;
+    const struct gost_cipher_info *param;
     if (!obj) {
         const char *params = get_gost_engine_param(GOST_PARAM_CRYPT_PARAMS);
         if (!params || !strlen(params)) {
-            int i;
-            for (i = 0; gost_cipher_list[i].nid != NID_undef; i++)
-                if (gost_cipher_list[i].nid == NID_id_tc26_gost_28147_param_Z)
-                    return &gost_cipher_list[i];
-            return &gost_cipher_list[0];
+            return get_default_gost_cipher_info();
         }
 
         nid = OBJ_txt2nid(params);
@@ -389,12 +357,10 @@ const struct gost_cipher_info *get_encryption_params(ASN1_OBJECT *obj)
     } else {
         nid = OBJ_obj2nid(obj);
     }
-    for (param = gost_cipher_list; param->sblock != NULL && param->nid != nid;
-         param++) ;
-    if (!param->sblock) {
+    param = get_gost_cipher_info_by_nid(nid);
+    if (!param)
         GOSTerr(GOST_F_GET_ENCRYPTION_PARAMS, GOST_R_INVALID_CIPHER_PARAMS);
-        return NULL;
-    }
+
     return param;
 }
 

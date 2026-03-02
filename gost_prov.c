@@ -137,7 +137,6 @@ static void gost_teardown(void *vprovctx)
 {
     GOST_prov_deinit_ciphers();
     GOST_prov_deinit_digests();
-    GOST_prov_deinit_mac_digests();
     provider_ctx_free(vprovctx);
 }
 

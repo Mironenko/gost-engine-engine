@@ -776,3 +776,46 @@ void acpkm_magma_key_meshing(gost_ctx * ctx)
     magma_key(ctx, newkey);
     OPENSSL_cleanse(newkey, sizeof(newkey));
 }
+
+static const struct gost_cipher_info gost_cipher_list[] = {
+    /*- NID *//*
+     * Subst block
+     *//*
+     * Key meshing
+     */
+    /*
+     * {NID_id_GostR3411_94_CryptoProParamSet,&GostR3411_94_CryptoProParamSet,0},
+     */
+    {NID_id_Gost28147_89_CryptoPro_A_ParamSet, &Gost28147_CryptoProParamSetA,
+     1},
+    {NID_id_Gost28147_89_CryptoPro_B_ParamSet, &Gost28147_CryptoProParamSetB,
+     1},
+    {NID_id_Gost28147_89_CryptoPro_C_ParamSet, &Gost28147_CryptoProParamSetC,
+     1},
+    {NID_id_Gost28147_89_CryptoPro_D_ParamSet, &Gost28147_CryptoProParamSetD,
+     1},
+    {NID_id_tc26_gost_28147_param_Z, &Gost28147_TC26ParamSetZ, 1},
+    {NID_id_Gost28147_89_TestParamSet, &Gost28147_TestParamSet, 1},
+    {NID_undef, NULL, 0}
+};
+
+const struct gost_cipher_info *get_gost_cipher_info_by_nid(int nid)
+{
+    const struct gost_cipher_info *param;
+    for (param = gost_cipher_list; param->sblock != NULL && param->nid != nid;
+         param++) ;
+    if (!param->sblock) {
+        return NULL;
+    }
+    return param;
+}
+
+const struct gost_cipher_info *get_default_gost_cipher_info()
+{
+    // This is copy-paste of legacy logic. Looks like it may be simplified
+    int i;
+    for (i = 0; gost_cipher_list[i].nid != NID_undef; i++)
+        if (gost_cipher_list[i].nid == NID_id_tc26_gost_28147_param_Z)
+            return &gost_cipher_list[i];
+    return &gost_cipher_list[0];
+}

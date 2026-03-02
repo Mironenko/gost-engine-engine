@@ -111,4 +111,15 @@ typedef unsigned int word32;
 void kboxinit(gost_ctx * c, const gost_subst_block * b);
 void magma_get_key(gost_ctx * c, byte * k);
 void acpkm_magma_key_meshing(gost_ctx * ctx);
+
+/* Structure to map parameter NID to S-block */
+struct gost_cipher_info {
+    int nid;
+    gost_subst_block *sblock;
+    int key_meshing;
+};
+
+const struct gost_cipher_info *get_gost_cipher_info_by_nid(int nid);
+const struct gost_cipher_info *get_default_gost_cipher_info();
+
 #endif

@@ -30,7 +30,7 @@
 # include <sys/sysmips.h>
 #endif
 #ifndef EVP_MD_CTRL_SET_KEY
-# include "gost_lcl.h"
+# include "gost_mac.h"
 #endif
 
 /* Helpers to test OpenSSL API calls. */
