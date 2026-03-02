@@ -23,6 +23,7 @@
 
 #include "e_gost_err.h"
 #include "gost_tls12_additional.h"
+#include "gost_kdftree.h"
 
 #define T(e) \
     if (!(e)) { \

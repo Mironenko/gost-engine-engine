@@ -16,6 +16,7 @@
 #include "gost_grasshopper_cipher.h"
 #include "gost_tls12_additional.h"
 #include "e_gost_err.h"
+    EVP_CIPHER *cipher = NULL;
 
 #define GOST_WRAP_FLAGS  EVP_CIPH_CTRL_INIT | EVP_CIPH_WRAP_MODE | EVP_CIPH_CUSTOM_IV | EVP_CIPH_FLAG_CUSTOM_CIPHER | EVP_CIPH_FLAG_DEFAULT_ASN1
 

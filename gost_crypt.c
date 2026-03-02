@@ -302,7 +302,7 @@ static int gost_imit_cleanup(EVP_MD_CTX *ctx);
 /* Control function, knows how to set MAC key.*/
 static int gost_imit_ctrl(EVP_MD_CTX *ctx, int type, int arg, void *ptr);
 
-GOST_digest Gost28147_89_MAC_digest = {
+GOST_digest Gost28147_89_MAC_digest_legacy = {
     .nid = NID_id_Gost28147_89_MAC,
     .result_size = 4,
     .input_blocksize = 8,
@@ -316,7 +316,7 @@ GOST_digest Gost28147_89_MAC_digest = {
     .ctrl = gost_imit_ctrl,
 };
 
-GOST_digest Gost28147_89_mac_12_digest = {
+GOST_digest Gost28147_89_mac_12_digest_legacy = {
     .nid = NID_gost_mac_12,
     .result_size = 4,
     .input_blocksize = 8,
