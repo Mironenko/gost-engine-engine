@@ -11,10 +11,10 @@
 #include <openssl/err.h>
 #include <openssl/evp.h>
 
-#include "e_gost_err.h"
-#include "gost_lcl.h"
+#include "e_gost_err.h" 
+#include "gost_grasshopper.h"
 #include "gost_cmac_acpkm.h"
-#include "gost_grasshopper_defines.h"
+#include "gost_mac_base.h"
 
 /*
  * End of CMAC code from crypto/cmac/cmac.c with ACPKM tweaks
@@ -29,9 +29,9 @@ typedef struct omac_acpkm_ctx {
 
 #define MAX_GOST_OMAC_ACPKM_SIZE 16
 
-static int omac_acpkm_init(EVP_MD_CTX *ctx, const char *cipher_name)
+static int omac_acpkm_init(GOST_mac_ctx *ctx, const char *cipher_name)
 {
-    OMAC_ACPKM_CTX *c = EVP_MD_CTX_md_data(ctx);
+    OMAC_ACPKM_CTX *c = GOST_mac_ctx_data(ctx);
     memset(c, 0, sizeof(OMAC_ACPKM_CTX));
     c->cipher_name = cipher_name;
     c->key_set = 0;
@@ -48,20 +48,20 @@ static int omac_acpkm_init(EVP_MD_CTX *ctx, const char *cipher_name)
     return 1;
 }
 
-static int grasshopper_omac_acpkm_init(EVP_MD_CTX *ctx)
+static int grasshopper_omac_acpkm_init(GOST_mac_ctx *ctx)
 {
     return omac_acpkm_init(ctx, SN_grasshopper_cbc);
 }
 
-static int magma_omac_acpkm_init(EVP_MD_CTX *ctx)
+static int magma_omac_acpkm_init(GOST_mac_ctx *ctx)
 {
     return omac_acpkm_init(ctx, SN_magma_cbc);
 }
 
-static int omac_acpkm_imit_update(EVP_MD_CTX *ctx, const void *data,
+static int omac_acpkm_imit_update(GOST_mac_ctx *ctx, const void *data,
                                   size_t count)
 {
-    OMAC_ACPKM_CTX *c = EVP_MD_CTX_md_data(ctx);
+    OMAC_ACPKM_CTX *c = GOST_mac_ctx_data(ctx);
     if (!c->key_set) {
         GOSTerr(GOST_F_OMAC_ACPKM_IMIT_UPDATE, GOST_R_MAC_KEY_NOT_SET);
         return 0;
@@ -70,9 +70,9 @@ static int omac_acpkm_imit_update(EVP_MD_CTX *ctx, const void *data,
     return CMAC_ACPKM_Update(c->cmac_ctx, data, count);
 }
 
-static int omac_acpkm_imit_final(EVP_MD_CTX *ctx, unsigned char *md)
+static int omac_acpkm_imit_final(GOST_mac_ctx *ctx, unsigned char *md)
 {
-    OMAC_ACPKM_CTX *c = EVP_MD_CTX_md_data(ctx);
+    OMAC_ACPKM_CTX *c = GOST_mac_ctx_data(ctx);
     unsigned char mac[MAX_GOST_OMAC_ACPKM_SIZE];
     size_t mac_size = sizeof(mac);
     int ret;
@@ -88,10 +88,10 @@ static int omac_acpkm_imit_final(EVP_MD_CTX *ctx, unsigned char *md)
     return ret;
 }
 
-static int omac_acpkm_imit_copy(EVP_MD_CTX *to, const EVP_MD_CTX *from)
+static int omac_acpkm_imit_copy(GOST_mac_ctx *to, const GOST_mac_ctx *from)
 {
-    OMAC_ACPKM_CTX *c_to = EVP_MD_CTX_md_data(to);
-    const OMAC_ACPKM_CTX *c_from = EVP_MD_CTX_md_data(from);
+    OMAC_ACPKM_CTX *c_to = GOST_mac_ctx_data(to);
+    const OMAC_ACPKM_CTX *c_from = GOST_mac_ctx_data(from);
 
     if (c_from && c_to) {
         c_to->dgst_size = c_from->dgst_size;
@@ -115,13 +115,13 @@ static int omac_acpkm_imit_copy(EVP_MD_CTX *to, const EVP_MD_CTX *from)
 }
 
 /* Clean up imit ctx */
-static int omac_acpkm_imit_cleanup(EVP_MD_CTX *ctx)
+static int omac_acpkm_imit_cleanup(GOST_mac_ctx *ctx)
 {
-    OMAC_ACPKM_CTX *c = EVP_MD_CTX_md_data(ctx);
+    OMAC_ACPKM_CTX *c = GOST_mac_ctx_data(ctx);
 
     if (c) {
         CMAC_ACPKM_CTX_free(c->cmac_ctx);
-        memset(EVP_MD_CTX_md_data(ctx), 0, sizeof(OMAC_ACPKM_CTX));
+        memset(GOST_mac_ctx_data(ctx), 0, sizeof(OMAC_ACPKM_CTX));
     }
     return 1;
 }
@@ -144,7 +144,7 @@ static int omac_acpkm_key(OMAC_ACPKM_CTX *c, const EVP_CIPHER *cipher,
     return 1;
 }
 
-static int omac_acpkm_imit_ctrl(EVP_MD_CTX *ctx, int type, int arg, void *ptr)
+static int omac_acpkm_imit_ctrl(GOST_mac_ctx *ctx, int type, int arg, void *ptr)
 {
     switch (type) {
     case EVP_MD_CTRL_KEY_LEN:
@@ -152,17 +152,14 @@ static int omac_acpkm_imit_ctrl(EVP_MD_CTX *ctx, int type, int arg, void *ptr)
         return 1;
     case EVP_MD_CTRL_SET_KEY:
         {
-            OMAC_ACPKM_CTX *c = EVP_MD_CTX_md_data(ctx);
-            const EVP_MD *md = EVP_MD_CTX_md(ctx);
+            OMAC_ACPKM_CTX *c = GOST_mac_ctx_data(ctx);
             EVP_CIPHER *cipher = NULL;
             int ret = 0;
 
             if (c->cipher_name == NULL) {
-                if (EVP_MD_is_a(md, SN_grasshopper_mac)
-                    || EVP_MD_is_a(md, SN_id_tc26_cipher_gostr3412_2015_kuznyechik_ctracpkm_omac))
+                if (GET_MEMBER(GOST_mac, ctx->cls, nid) == NID_id_tc26_cipher_gostr3412_2015_kuznyechik_ctracpkm_omac)
                     c->cipher_name = SN_grasshopper_cbc;
-                else if (EVP_MD_is_a(md, SN_magma_mac)
-                    || EVP_MD_is_a(md, SN_id_tc26_cipher_gostr3412_2015_magma_ctracpkm_omac))
+                else if (GET_MEMBER(GOST_mac, ctx->cls, nid) == NID_id_tc26_cipher_gostr3412_2015_magma_ctracpkm_omac)
                     c->cipher_name = SN_magma_cbc;
             }
             if ((cipher =
@@ -171,11 +168,11 @@ static int omac_acpkm_imit_ctrl(EVP_MD_CTX *ctx, int type, int arg, void *ptr)
                     EVP_CIPHER_fetch(NULL, c->cipher_name, NULL)) == NULL) {
                 GOSTerr(GOST_F_OMAC_ACPKM_IMIT_CTRL, GOST_R_CIPHER_NOT_FOUND);
             }
-            if (EVP_MD_meth_get_init(EVP_MD_CTX_md(ctx)) (ctx) <= 0) {
+            if (GET_MEMBER(GOST_mac, ctx->cls, init)(ctx) <= 0) {
                 GOSTerr(GOST_F_OMAC_ACPKM_IMIT_CTRL, GOST_R_MAC_KEY_NOT_SET);
                 goto set_key_end;
             }
-            EVP_MD_CTX_set_flags(ctx, EVP_MD_CTX_FLAG_NO_INIT);
+            GOST_mac_ctx_set_flags(ctx, EVP_MD_CTX_FLAG_NO_INIT);
             if (c->key_set) {
                 GOSTerr(GOST_F_OMAC_ACPKM_IMIT_CTRL, GOST_R_BAD_ORDER);
                 goto set_key_end;
@@ -195,8 +192,8 @@ static int omac_acpkm_imit_ctrl(EVP_MD_CTX *ctx, int type, int arg, void *ptr)
         }
     case EVP_CTRL_KEY_MESH:
         {
-            OMAC_ACPKM_CTX *c = EVP_MD_CTX_md_data(ctx);
-            if (!arg || (arg % EVP_MD_block_size(EVP_MD_CTX_md(ctx))))
+            OMAC_ACPKM_CTX *c = GOST_mac_ctx_data(ctx);
+            if (!arg || (arg % GET_MEMBER(GOST_mac, ctx->cls, input_blocksize)))
                 return -1;
             c->cmac_ctx->section_size = arg;
             if (ptr && *(int *)ptr) {
@@ -223,7 +220,7 @@ static int omac_acpkm_imit_ctrl(EVP_MD_CTX *ctx, int type, int arg, void *ptr)
         }
     case EVP_MD_CTRL_XOF_LEN:   /* Supported in OpenSSL */
         {
-            OMAC_ACPKM_CTX *c = EVP_MD_CTX_md_data(ctx);
+            OMAC_ACPKM_CTX *c = GOST_mac_ctx_data(ctx);
             switch (OBJ_txt2nid(c->cipher_name)) {
             case NID_grasshopper_cbc:
                 if (arg < 1 || arg > 16) {
@@ -250,30 +247,35 @@ static int omac_acpkm_imit_ctrl(EVP_MD_CTX *ctx, int type, int arg, void *ptr)
     }
 }
 
-GOST_digest kuznyechik_ctracpkm_omac_digest = {
-    .nid = NID_id_tc26_cipher_gostr3412_2015_kuznyechik_ctracpkm_omac,
-    .result_size = MAX_GOST_OMAC_ACPKM_SIZE,
-    .input_blocksize = GRASSHOPPER_BLOCK_SIZE,
-    .app_datasize = sizeof(OMAC_ACPKM_CTX),
-    .flags = EVP_MD_FLAG_XOF,
-    .init = grasshopper_omac_acpkm_init,
-    .update = omac_acpkm_imit_update,
-    .final = omac_acpkm_imit_final,
-    .copy = omac_acpkm_imit_copy,
-    .cleanup = omac_acpkm_imit_cleanup,
-    .ctrl = omac_acpkm_imit_ctrl,
+static GOST_mac Gost_ctracpkm_mac_base = {
+    INIT_MEMBER(base, &Gost_mac_base),
+
+    INIT_MEMBER(flags, EVP_MD_FLAG_XOF),
+    INIT_MEMBER(algctx_size, sizeof(OMAC_ACPKM_CTX)),
+
+    INIT_MEMBER(update, omac_acpkm_imit_update),
+    INIT_MEMBER(final, omac_acpkm_imit_final),
+    INIT_MEMBER(copy, omac_acpkm_imit_copy),
+    INIT_MEMBER(cleanup, omac_acpkm_imit_cleanup),
+    INIT_MEMBER(ctrl, omac_acpkm_imit_ctrl),
 };
 
-GOST_digest magma_ctracpkm_omac_digest = {
-    .nid = NID_id_tc26_cipher_gostr3412_2015_magma_ctracpkm_omac,
-    .result_size = 8,
-    .input_blocksize = 8,
-    .app_datasize = sizeof(OMAC_ACPKM_CTX),
-    .flags = EVP_MD_FLAG_XOF,
-    .init = magma_omac_acpkm_init,
-    .update = omac_acpkm_imit_update,
-    .final = omac_acpkm_imit_final,
-    .copy = omac_acpkm_imit_copy,
-    .cleanup = omac_acpkm_imit_cleanup,
-    .ctrl = omac_acpkm_imit_ctrl,
+const GOST_mac grasshopper_ctracpkm_mac = {
+    INIT_MEMBER(base, &Gost_ctracpkm_mac_base),
+
+    INIT_MEMBER(nid, NID_id_tc26_cipher_gostr3412_2015_kuznyechik_ctracpkm_omac),
+    INIT_MEMBER(result_size, MAX_GOST_OMAC_ACPKM_SIZE),
+    INIT_MEMBER(input_blocksize, GRASSHOPPER_BLOCK_SIZE),
+
+    INIT_MEMBER(init, grasshopper_omac_acpkm_init),
+};
+
+const GOST_mac magma_ctracpkm_mac = {
+    INIT_MEMBER(base, &Gost_ctracpkm_mac_base),
+
+    INIT_MEMBER(nid, NID_id_tc26_cipher_gostr3412_2015_magma_ctracpkm_omac),
+    INIT_MEMBER(result_size, 8),
+    INIT_MEMBER(input_blocksize, 8),
+
+    INIT_MEMBER(init, magma_omac_acpkm_init),
 };

@@ -186,6 +186,14 @@ set(GOST_NEW_CORE_DIGEST_SOURCE_FILES
         gost_digest.c
 )
 
+set(GOST_NEW_CORE_MAC_SOURCE_FILES
+        gost_mac.c
+        gost_mac_base.c
+        gost_mac_28147_89.c
+        gost_mac_3412_omac.c
+        gost_mac_3412_ctracpkm.c
+)
+
 set(GOST_EC_SOURCE_FILES
         gost_ec_keyx.c
         gost_ec_sign.c
@@ -433,6 +441,10 @@ add_library(gost_new_core_digest STATIC ${GOST_NEW_CORE_DIGEST_SOURCE_FILES})
 set_target_properties(gost_new_core_digest PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gost_new_core_digest PRIVATE OpenSSL::Crypto gosthash gosthash2012)
 
+add_library(gost_new_core_mac STATIC ${GOST_NEW_CORE_MAC_SOURCE_FILES})
+set_target_properties(gost_new_core_mac PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(gost_new_core_mac PRIVATE OpenSSL::Crypto gosttls12additional)
+
 # The GOST engine in module form
 add_library(gost_engine MODULE ${GOST_ENGINE_SOURCE_FILES})
 # Set the suffix explicitly to adapt to OpenSSL's idea of what a
@@ -462,7 +474,7 @@ set_target_properties(gost_prov PROPERTIES
   PREFIX "" OUTPUT_NAME "gostprov" SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX}
   COMPILE_DEFINITIONS "BUILDING_GOST_PROVIDER;OPENSSL_NO_DYNAMIC_ENGINE"
   )
-target_link_libraries(gost_prov PRIVATE gost_core gost_new_core_digest libprov)
+target_link_libraries(gost_prov PRIVATE gost_core gost_new_core_digest gost_new_core_mac libprov)
 
 if (NOT MSVC)
 # The GOST provider in library form
@@ -473,7 +485,7 @@ set_target_properties(lib_gost_prov PROPERTIES
   OUTPUT_NAME "gostprov"
   COMPILE_DEFINITIONS "BUILDING_GOST_PROVIDER;BUILDING_PROVIDER_AS_LIBRARY;OPENSSL_NO_DYNAMIC_ENGINE"
   )
-target_link_libraries(lib_gost_prov PRIVATE gost_core gost_new_core_digest libprov)
+target_link_libraries(lib_gost_prov PRIVATE gost_core gost_new_core_digest gost_new_core_mac libprov)
 endif()
 
 set(GOST_SUM_SOURCE_FILES
