@@ -22,7 +22,7 @@ static GOST_digest_ctx* gost_digest_new(const GOST_digest *d)
         return ctx;
 
     ctx->cls = d;
-    ctx->algctx = OPENSSL_zalloc(GET_MEMBER(d, algctx_size));
+    ctx->algctx = OPENSSL_zalloc(GET_MEMBER(GOST_digest, d, algctx_size));
     if (!ctx->algctx) {
         OPENSSL_free(ctx);
         ctx = NULL;
@@ -41,11 +41,11 @@ void gost_digest_free(GOST_digest_ctx *ctx)
 }
 
 static void gost_digest_static_init(const GOST_digest* d) {
-    if (GET_MEMBER(d, alias))
-        EVP_add_digest_alias(OBJ_nid2sn(GET_MEMBER(d, nid)), GET_MEMBER(d, alias));
+    if (GET_MEMBER(GOST_digest, d, alias))
+        EVP_add_digest_alias(OBJ_nid2sn(GET_MEMBER(GOST_digest, d, nid)), GET_MEMBER(GOST_digest, d, alias));
 }
 
 static void gost_digest_static_deinit(const GOST_digest* d) {
-    if (GET_MEMBER(d, alias))
-        EVP_delete_digest_alias(GET_MEMBER(d, alias));
+    if (GET_MEMBER(GOST_digest, d, alias))
+        EVP_delete_digest_alias(GET_MEMBER(GOST_digest, d, alias));
 }

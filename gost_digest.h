@@ -3,7 +3,7 @@
 #include <stddef.h>
 #include <stdint.h>
 
-#include "utils_one_level_inheritance.h"
+#include "utils_inheritance.h"
 
 struct gost_digest_st;
 typedef struct gost_digest_st GOST_digest;
@@ -47,6 +47,26 @@ struct gost_digest_st {
     DECL_MEMBER(gost_digest_st_static_init_fn *, static_init);
     DECL_MEMBER(gost_digest_st_static_deinit_fn *, static_deinit);
 };
+
+IMPL_MEMBER_ACCESSOR(GOST_digest, int, nid);
+IMPL_MEMBER_ACCESSOR(GOST_digest, const char *, alias);
+IMPL_MEMBER_ACCESSOR(GOST_digest, int, result_size);
+IMPL_MEMBER_ACCESSOR(GOST_digest, int, input_blocksize);
+IMPL_MEMBER_ACCESSOR(GOST_digest, int, flags);
+IMPL_MEMBER_ACCESSOR(GOST_digest, const char *, micalg);
+IMPL_MEMBER_ACCESSOR(GOST_digest, size_t, algctx_size);
+
+IMPL_MEMBER_ACCESSOR(GOST_digest, gost_digest_st_new_fn *, new);
+IMPL_MEMBER_ACCESSOR(GOST_digest, gost_digest_st_free_fn *, free);
+IMPL_MEMBER_ACCESSOR(GOST_digest, gost_digest_st_init_fn *, init);
+IMPL_MEMBER_ACCESSOR(GOST_digest, gost_digest_st_update_fn *, update);
+IMPL_MEMBER_ACCESSOR(GOST_digest, gost_digest_st_final_fn *, final);
+IMPL_MEMBER_ACCESSOR(GOST_digest, gost_digest_st_copy_fn *, copy);
+IMPL_MEMBER_ACCESSOR(GOST_digest, gost_digest_st_cleanup_fn *, cleanup);
+IMPL_MEMBER_ACCESSOR(GOST_digest, gost_digest_st_ctrl_fn *, ctrl);
+
+IMPL_MEMBER_ACCESSOR(GOST_digest, gost_digest_st_static_init_fn *, static_init);
+IMPL_MEMBER_ACCESSOR(GOST_digest, gost_digest_st_static_deinit_fn *, static_deinit);
 
 struct gost_digest_ctx_st {
     const GOST_digest* cls;
