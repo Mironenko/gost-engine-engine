@@ -2,7 +2,7 @@
 
 #include "gost_digest_base.h"
 
-static void gost_digest_static_init(const GOST_digest* d);
+static void gost_digest_static_init(GOST_digest* d);
 static void gost_digest_static_deinit(const GOST_digest* d);
 
 static GOST_digest_ctx* gost_digest_new(const GOST_digest* d);
@@ -40,7 +40,24 @@ void gost_digest_free(GOST_digest_ctx *ctx)
     OPENSSL_free(ctx);
 }
 
-static void gost_digest_static_init(const GOST_digest* d) {
+static void gost_digest_static_init(GOST_digest* d) {
+    RESOLVE_MEMBER(GOST_digest, d, nid);
+    RESOLVE_MEMBER(GOST_digest, d, alias);
+    RESOLVE_MEMBER(GOST_digest, d, result_size);
+    RESOLVE_MEMBER(GOST_digest, d, input_blocksize);
+    RESOLVE_MEMBER(GOST_digest, d, flags);
+    RESOLVE_MEMBER(GOST_digest, d, micalg);
+    RESOLVE_MEMBER(GOST_digest, d, algctx_size);
+
+    RESOLVE_MEMBER(GOST_digest, d, new);
+    RESOLVE_MEMBER(GOST_digest, d, free);
+    RESOLVE_MEMBER(GOST_digest, d, init);
+    RESOLVE_MEMBER(GOST_digest, d, update);
+    RESOLVE_MEMBER(GOST_digest, d, final);
+    RESOLVE_MEMBER(GOST_digest, d, copy);
+    RESOLVE_MEMBER(GOST_digest, d, cleanup);
+    RESOLVE_MEMBER(GOST_digest, d, ctrl);
+
     if (GET_MEMBER(GOST_digest, d, alias))
         EVP_add_digest_alias(OBJ_nid2sn(GET_MEMBER(GOST_digest, d, nid)), GET_MEMBER(GOST_digest, d, alias));
 }

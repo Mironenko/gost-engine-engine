@@ -30,7 +30,7 @@
 	.DETAILS_MEMBER_NAME(name) = (val), \
 	.DETAILS_MEMBER_NAME_ISSET(name) = true
 
-#define GET_MEMBER(st, object, name) DETAILS_MEMBER_ACCESSOR_IMPL_NAME(st, name)(object)
+#define GET_MEMBER(st, object, name) object->DETAILS_MEMBER_NAME(name)
 
 #define GET_MEMBER_PTR(st, object, name) DETAILS_MEMBER_PTR_ACCESSOR_IMPL_NAME(st, name)(object)
 
@@ -52,3 +52,8 @@ static inline type const* DETAILS_MEMBER_PTR_ACCESSOR_IMPL_NAME(st, name)(const 
 		return DETAILS_MEMBER_PTR_ACCESSOR_IMPL_NAME(st, name)((object)->DETAILS_MEMBER_NAME(DETAILS_BASE_NAME)); \
 	} \
 }
+
+#define GET_RESOLVED_MEMBER(st, object, name) DETAILS_MEMBER_ACCESSOR_IMPL_NAME(st, name)(object)
+
+#define RESOLVE_MEMBER(st, object, name) \
+	GET_MEMBER(st, object, name) = DETAILS_MEMBER_ACCESSOR_IMPL_NAME(st, name)(object)

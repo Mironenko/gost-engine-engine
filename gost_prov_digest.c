@@ -169,7 +169,7 @@ const OSSL_ALGORITHM GOST_prov_digests[] = {
     { NULL , NULL, NULL }
 };
 
-static const GOST_digest *digests[] = {
+static GOST_digest *digests[] = {
     &GostR3411_94_digest,
     &GostR3411_2012_256_digest,
     &GostR3411_2012_512_digest,
@@ -180,11 +180,11 @@ static const GOST_digest *digests[] = {
 void GOST_prov_init_digests(void) {
     size_t i;
     for (i = 0; i < arraysize(digests); i++)
-        GET_MEMBER(GOST_digest, digests[i], static_init)(digests[i]);
+        GET_RESOLVED_MEMBER(GOST_digest, digests[i], static_init)(digests[i]);
 }
 
 void GOST_prov_deinit_digests(void) {
     size_t i;
     for (i = 0; i < arraysize(digests); i++)
-        GET_MEMBER(GOST_digest, digests[i], static_deinit)(digests[i]);
+        GET_RESOLVED_MEMBER(GOST_digest, digests[i], static_deinit)(digests[i]);
 }

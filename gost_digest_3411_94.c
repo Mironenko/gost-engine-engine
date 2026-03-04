@@ -23,7 +23,7 @@ static inline struct ossl_gost_digest_ctx* impl_digest_ctx_data(const GOST_diges
     return (struct ossl_gost_digest_ctx*)GOST_digest_ctx_data(ctx);
 }
 
-const GOST_digest GostR3411_94_digest = {
+GOST_digest GostR3411_94_digest = {
     INIT_MEMBER(nid, NID_id_GostR3411_94),
     INIT_MEMBER(result_size, 32),
     INIT_MEMBER(input_blocksize, 32),

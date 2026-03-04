@@ -21,7 +21,7 @@ typedef int (gost_digest_st_copy_fn)(GOST_digest_ctx *to, const GOST_digest_ctx 
 typedef int (gost_digest_st_cleanup_fn)(GOST_digest_ctx *ctx);
 typedef int (gost_digest_st_ctrl_fn)(GOST_digest_ctx *ctx, int cmd, int p1, void *p2);
 
-typedef void (gost_digest_st_static_init_fn)(const GOST_digest *);
+typedef void (gost_digest_st_static_init_fn)(GOST_digest *);
 typedef void (gost_digest_st_static_deinit_fn)(const GOST_digest *);
 
 struct gost_digest_st {

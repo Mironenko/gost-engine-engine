@@ -23,7 +23,7 @@ static int gost_digest_cleanup(GOST_digest_ctx *ctx);
     INIT_MEMBER(copy, gost_digest_copy), \
     INIT_MEMBER(cleanup, gost_digest_cleanup)
 
-const GOST_digest GostR3411_2012_256_digest = {
+GOST_digest GostR3411_2012_256_digest = {
     INIT_MEMBER(nid, NID_id_GostR3411_2012_256),
     INIT_MEMBER(alias, "streebog256"),
     INIT_MEMBER(micalg, "gostr3411-2012-256"),
@@ -32,7 +32,7 @@ const GOST_digest GostR3411_2012_256_digest = {
     INIT_COMMON_MEMBERS(),    
 };
 
-const GOST_digest GostR3411_2012_512_digest = {
+GOST_digest GostR3411_2012_512_digest = {
     INIT_MEMBER(nid, NID_id_GostR3411_2012_512),
     INIT_MEMBER(alias, "streebog512"),
     INIT_MEMBER(micalg, "gostr3411-2012-512"),
