@@ -47,7 +47,7 @@ static inline gost2012_hash_ctx* impl_digest_ctx_data(const GOST_digest_ctx *ctx
 
 static int gost_digest_init(GOST_digest_ctx *ctx)
 {
-    init_gost2012_hash_ctx(impl_digest_ctx_data(ctx), 8 * GET_MEMBER(ctx->cls, result_size));
+    init_gost2012_hash_ctx(impl_digest_ctx_data(ctx), 8 * GET_MEMBER(GOST_digest, ctx->cls, result_size));
     return 1;
 }
 
