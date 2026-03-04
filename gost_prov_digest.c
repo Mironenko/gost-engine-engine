@@ -40,7 +40,7 @@ static void digest_freectx(void *vgctx)
     if (!gctx)
         return;
 
-    GET_MEMBER(gctx->descriptor, free)(gctx->dctx);
+    GET_MEMBER(GOST_digest, gctx->descriptor, free)(gctx->dctx);
     OPENSSL_free(gctx);
 }
 
@@ -52,7 +52,7 @@ static GOST_CTX *digest_newctx(void *provctx, const GOST_digest *descriptor)
         gctx->provctx = provctx;
         gctx->descriptor = descriptor;
         
-        gctx->dctx = GET_MEMBER(gctx->descriptor, new)(gctx->descriptor);
+        gctx->dctx = GET_MEMBER(GOST_digest, gctx->descriptor, new)(gctx->descriptor);
         if (gctx->dctx == NULL) {
             digest_freectx(gctx);
             gctx = NULL;
@@ -67,7 +67,7 @@ static void *digest_dupctx(void *vsrc)
     GOST_CTX *dst = digest_newctx(src->provctx, src->descriptor);
 
     if (dst != NULL)
-        GET_MEMBER(src->descriptor, copy)(dst->dctx, src->dctx);
+        GET_MEMBER(GOST_digest, src->descriptor, copy)(dst->dctx, src->dctx);
 
     return dst;
 }
@@ -77,11 +77,11 @@ static int digest_get_params(const GOST_digest *descriptor, OSSL_PARAM params[])
     OSSL_PARAM *p;
 
     if (((p = OSSL_PARAM_locate(params, "blocksize")) != NULL
-         && !OSSL_PARAM_set_size_t(p, GET_MEMBER(descriptor, input_blocksize)))
+         && !OSSL_PARAM_set_size_t(p, GET_MEMBER(GOST_digest, descriptor, input_blocksize)))
         || ((p = OSSL_PARAM_locate(params, "size")) != NULL
-            && !OSSL_PARAM_set_size_t(p, GET_MEMBER(descriptor, result_size)))
+            && !OSSL_PARAM_set_size_t(p, GET_MEMBER(GOST_digest, descriptor, result_size)))
         || ((p = OSSL_PARAM_locate(params, "xof")) != NULL
-            && !OSSL_PARAM_set_size_t(p, GET_MEMBER(descriptor, flags) & EVP_MD_FLAG_XOF)))
+            && !OSSL_PARAM_set_size_t(p, GET_MEMBER(GOST_digest, descriptor, flags) & EVP_MD_FLAG_XOF)))
         return 0;
     return 1;
 }
@@ -90,14 +90,14 @@ static int digest_init(void *vgctx, const OSSL_PARAM unused_params[])
 {
     GOST_CTX *gctx = vgctx;
 
-    return GET_MEMBER(gctx->descriptor, init)(gctx->dctx) > 0;
+    return GET_MEMBER(GOST_digest, gctx->descriptor, init)(gctx->dctx) > 0;
 }
 
 static int digest_update(void *vgctx, const unsigned char *in, size_t inl)
 {
     GOST_CTX *gctx = vgctx;
 
-    return GET_MEMBER(gctx->descriptor, update)(gctx->dctx, in, inl) > 0;
+    return GET_MEMBER(GOST_digest, gctx->descriptor, update)(gctx->dctx, in, inl) > 0;
 }
 
 static int digest_final(void *vgctx,
@@ -105,15 +105,15 @@ static int digest_final(void *vgctx,
 {
     GOST_CTX *gctx = vgctx;
 
-    if (outsize < GET_MEMBER(gctx->descriptor, result_size))
+    if (outsize < GET_MEMBER(GOST_digest, gctx->descriptor, result_size))
         return 0;
 
-    int res = GET_MEMBER(gctx->descriptor, final)(gctx->dctx, out);
+    int res = GET_MEMBER(GOST_digest, gctx->descriptor, final)(gctx->dctx, out);
 
-    GET_MEMBER(gctx->descriptor, cleanup)(gctx->dctx);
+    GET_MEMBER(GOST_digest, gctx->descriptor, cleanup)(gctx->dctx);
 
     if (res > 0 && outl != NULL)
-        *outl = GET_MEMBER(gctx->descriptor, result_size);
+        *outl = GET_MEMBER(GOST_digest, gctx->descriptor, result_size);
 
     return res > 0;
 }
@@ -180,11 +180,11 @@ static const GOST_digest *digests[] = {
 void GOST_prov_init_digests(void) {
     size_t i;
     for (i = 0; i < arraysize(digests); i++)
-        GET_MEMBER(digests[i], static_init)(digests[i]);
+        GET_MEMBER(GOST_digest, digests[i], static_init)(digests[i]);
 }
 
 void GOST_prov_deinit_digests(void) {
     size_t i;
     for (i = 0; i < arraysize(digests); i++)
-        GET_MEMBER(digests[i], static_deinit)(digests[i]);
+        GET_MEMBER(GOST_digest, digests[i], static_deinit)(digests[i]);
 }
