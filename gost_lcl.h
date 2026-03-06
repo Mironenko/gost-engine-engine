@@ -354,8 +354,10 @@ extern GOST_cipher grasshopper_ctr_acpkm_omac_cipher;
 extern GOST_cipher magma_kexp15_cipher;
 extern GOST_cipher kuznyechik_kexp15_cipher;
 
+struct gost_digest_new_st;
 
 struct gost_digest_st {
+    struct gost_digest_new_st *d;
     struct gost_digest_st *template;
     int nid;
     const char *alias;
