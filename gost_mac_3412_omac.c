@@ -15,7 +15,7 @@
 #include "gost_mac.h"
 #include "gost_mac_base.h"
 #include "gost_mac_3412_omac.h"
-#include "gost_kdftree.h"
+#include "gost_tls12_additional.h"
 
 #define min(a,b) (((a) < (b)) ? (a) : (b))
 
@@ -160,7 +160,6 @@ static int omac_key(OMAC_CTX * c, const EVP_CIPHER *cipher,
     return 1;
 }
 
-/* Called directly by gost_kexp15() */
 static int omac_imit_ctrl(GOST_mac_ctx *ctx, int type, int arg, void *ptr)
 {
     switch (type) {
@@ -250,12 +249,12 @@ static int omac_imit_ctrl(GOST_mac_ctx *ctx, int type, int arg, void *ptr)
                 switch (OBJ_txt2nid(c->cipher_name)) {
                 case NID_magma_cbc:
                     ret = gost_tlstree_magma_cbc(c->key, diversed_key,
-                                                 (const unsigned char *)ptr, 
+                                                 (const unsigned char *)ptr,
                                                  TLSTREE_MODE_NONE);
                     break;
                 case NID_grasshopper_cbc:
                     ret = gost_tlstree_grasshopper_cbc(c->key, diversed_key,
-                                                       (const unsigned char *)ptr, 
+                                                       (const unsigned char *)ptr,
                                                        TLSTREE_MODE_NONE);
                     break;
                 default:
@@ -263,14 +262,14 @@ static int omac_imit_ctrl(GOST_mac_ctx *ctx, int type, int arg, void *ptr)
                 }
                 if (!ret)
                     return 0;
-                
+
                 EVP_CIPHER *cipher;
                 if ((cipher = (EVP_CIPHER *)EVP_get_cipherbyname(c->cipher_name))
                     || (cipher = EVP_CIPHER_fetch(NULL, c->cipher_name, NULL)))
                     ret = omac_key(c, cipher, diversed_key, 32);
                 EVP_CIPHER_free(cipher);
                 OPENSSL_cleanse(diversed_key, sizeof(diversed_key));
-                
+
                 return ret;
             }
             GOSTerr(GOST_F_OMAC_IMIT_CTRL, GOST_R_BAD_ORDER);

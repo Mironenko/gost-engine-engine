@@ -111,3 +111,4 @@ GOST_R_UKM_NOT_SET:129:ukm not set
 GOST_R_UNSUPPORTED_CIPHER_CTL_COMMAND:130:unsupported cipher ctl command
 GOST_R_UNSUPPORTED_PARAMETER_SET:131:unsupported parameter set
 GOST_R_UNSUPPORTED_RECIPIENT_INFO:137:unsupported recipient info
+GOST_R_UNSUPPORTED:143:unsupported

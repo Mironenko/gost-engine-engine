@@ -74,24 +74,15 @@ struct gost_mac_ctx_st {
     unsigned long flags;
 };
 
-#define EVP_MD_CTRL_KEY_LEN (EVP_MD_CTRL_ALG_CTRL+3)
-#define EVP_MD_CTRL_SET_KEY (EVP_MD_CTRL_ALG_CTRL+4)
-
-// GOST_MAC_CTX* GOST_MAC_CTX_new(const GOST_MAC *mac);
-// void GOST_MAC_CTX_free(GOST_MAC_CTX *ctx);
-// GOST_MAC_CTX *GOST_MAC_CTX_dup(const GOST_MAC_CTX *src);
-// GOST_MAC_CTX *GOST_MAC_CTX_get0_mac(EVP_MAC_CTX *ctx);
-// int GOST_MAC_CTX_init(GOST_MAC_CTX *ctx);
-// int GOST_MAC_CTX_update(GOST_MAC_CTX *ctx, const unsigned char *data, size_t datalen);
-// int GOST_MAC_CTX_update(GOST_MAC_CTX *ctx, const unsigned char *data, size_t datalen);
-
-
-void* GOST_mac_ctx_data(const GOST_mac_ctx*);
-void GOST_mac_ctx_set_flags(GOST_mac_ctx *ctx, int flags);
-int GOST_mac_ctx_test_flags(const GOST_mac_ctx *ctx, int flags);
-
 struct gost_mac_key {
     int mac_param_nid;
     unsigned char key[32];
     short int mac_size;
 };
+
+#define EVP_MD_CTRL_KEY_LEN (EVP_MD_CTRL_ALG_CTRL+3)
+#define EVP_MD_CTRL_SET_KEY (EVP_MD_CTRL_ALG_CTRL+4)
+
+void* GOST_mac_ctx_data(const GOST_mac_ctx*);
+void GOST_mac_ctx_set_flags(GOST_mac_ctx *ctx, int flags);
+int GOST_mac_ctx_test_flags(const GOST_mac_ctx *ctx, int flags);

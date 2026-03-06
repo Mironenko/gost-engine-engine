@@ -149,5 +149,6 @@ void ERR_GOST_error(int function, int reason, char *file, int line);
 # define GOST_R_UNSUPPORTED_CIPHER_CTL_COMMAND            130
 # define GOST_R_UNSUPPORTED_PARAMETER_SET                 131
 # define GOST_R_UNSUPPORTED_RECIPIENT_INFO                137
+# define GOST_R_UNSUPPORTED                               143
 
 #endif

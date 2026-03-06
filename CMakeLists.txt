@@ -433,7 +433,7 @@ target_link_libraries(gost_new_core_digest PRIVATE OpenSSL::Crypto gosthash gost
 
 add_library(gost_new_core_mac STATIC ${GOST_NEW_CORE_MAC_SOURCE_FILES})
 set_target_properties(gost_new_core_mac PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(gost_new_core_mac PRIVATE OpenSSL::Crypto gostkdftree)
+target_link_libraries(gost_new_core_mac PRIVATE OpenSSL::Crypto gosttls12additional)
 
 # The GOST engine in module form
 add_library(gost_engine MODULE ${GOST_ENGINE_SOURCE_FILES})

@@ -180,25 +180,9 @@ static int gost_imit_ctrl(GOST_mac_ctx *ctx, int type, int arg, void *ptr)
             GOST_mac_ctx_set_flags(ctx, EVP_MD_CTX_FLAG_NO_INIT);
 
             if (arg == 0) {
+                GOSTerr(GOST_F_GOST_IMIT_CTRL,
+                                GOST_R_UNSUPPORTED);
                 return 0;
-                // This part is engine-specific
-                /*
-                struct gost_mac_key *key = (struct gost_mac_key *)ptr;
-                if (key->mac_param_nid != NID_undef) {
-                    const struct gost_cipher_info *param =
-                        get_encryption_params(OBJ_nid2obj(key->mac_param_nid));
-                    if (param == NULL) {
-                        GOSTerr(GOST_F_GOST_IMIT_CTRL,
-                                GOST_R_INVALID_MAC_PARAMS);
-                        return 0;
-                    }
-                    gost_init(&(gost_imit_ctx->cctx), param->sblock);
-                }
-                gost_key(&(gost_imit_ctx->cctx), key->key);
-                gost_imit_ctx->key_set = 1;
-
-                return 1;
-                */
             } else if (arg == 32) {
                 gost_key(&(gost_imit_ctx->cctx), ptr);
                 gost_imit_ctx->key_set = 1;

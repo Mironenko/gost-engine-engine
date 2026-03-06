@@ -184,6 +184,8 @@ static ERR_STRING_DATA GOST_str_reasons[] = {
     "unsupported parameter set"},
     {ERR_PACK(0, 0, GOST_R_UNSUPPORTED_RECIPIENT_INFO),
     "unsupported recipient info"},
+    {ERR_PACK(0, 0, GOST_R_UNSUPPORTED),
+    "unsupported"},
     {0, NULL}
 };
 
