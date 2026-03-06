@@ -65,9 +65,6 @@ const GOST_mac Gost28147_89_mac_12 = {
 
 static int gost_imit_init(GOST_mac_ctx *ctx, gost_subst_block * block)
 {
-    if (GOST_mac_ctx_test_flags(ctx, EVP_MD_CTX_FLAG_NO_INIT)) {
-        return 1;
-    }
     struct ossl_gost_imit_ctx *c = GOST_mac_ctx_data(ctx);
     memset(c->buffer, 0, sizeof(c->buffer));
     memset(c->partial_block, 0, sizeof(c->partial_block));

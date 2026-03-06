@@ -6,25 +6,37 @@ static void gost_digest_static_init(const GOST_digest* d);
 static void gost_digest_static_deinit(const GOST_digest* d);
 
 static GOST_digest_ctx* gost_digest_new(const GOST_digest* d);
+static GOST_digest_ctx* gost_digest_placement_new(const GOST_digest* d, void* buf);
 static void gost_digest_free(GOST_digest_ctx* vctx);
 
 const GOST_digest GostR3411_digest_base = {
     INIT_MEMBER(static_init, gost_digest_static_init),
     INIT_MEMBER(static_deinit, gost_digest_static_deinit),
     INIT_MEMBER(new, gost_digest_new),
+    INIT_MEMBER(placement_new, gost_digest_placement_new),
     INIT_MEMBER(free, gost_digest_free),
 };
 
 static GOST_digest_ctx* gost_digest_new(const GOST_digest *d)
 {
-    GOST_digest_ctx *ctx = (GOST_digest_ctx*)OPENSSL_zalloc(sizeof(GOST_digest_ctx));
+    void *buf = OPENSSL_zalloc(sizeof(GOST_digest_ctx));
+    GOST_digest_ctx* ctx = gost_digest_placement_new(d, buf);
+    if (!ctx) {
+        OPENSSL_free(buf);
+        ctx = NULL;
+    }
+    return ctx;
+}
+
+static GOST_digest_ctx* gost_digest_placement_new(const GOST_digest *d, void* buf)
+{
+    GOST_digest_ctx *ctx = (GOST_digest_ctx*)buf;
     if (!ctx)
         return ctx;
 
     ctx->cls = d;
     ctx->algctx = OPENSSL_zalloc(GET_MEMBER(GOST_digest, d, algctx_size));
     if (!ctx->algctx) {
-        OPENSSL_free(ctx);
         ctx = NULL;
     }
 

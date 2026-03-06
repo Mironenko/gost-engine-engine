@@ -168,10 +168,6 @@ set(GOST_LEGACY_CORE_SOURCE_FILES
         gost_crypt.c
         gost_keywrap.c
         gost_keywrap.h
-        gost_md.c
-        gost_md2012.c
-        gost_omac.c
-        gost_omac_acpkm.c
         gost_gost2015.c
         gost_lcl.h
         gost_params.c
@@ -211,20 +207,17 @@ set(GOST_CMAC_ACPKM_SOURCE_FILES
         gost_cmac_acpkm.c
         )
 
-set (GOST_OMAC_SOURCE_FILES
-        gost_omac.c
-        gost_omac_acpkm.c
-        )
-
 set(GOST_LIB_SOURCE_FILES
         ${GOST_LEGACY_CORE_SOURCE_FILES}
         ${GOST_GRASSHOPPER_SOURCE_FILES}
         ${GOST_EC_SOURCE_FILES}
-        ${GOST_OMAC_SOURCE_FILES}
         )
 
 set(GOST_ENGINE_SOURCE_FILES
         gost_eng.c
+        gost_eng_digest.c
+        gost_eng_digest_mac.c
+        gost_eng_digest_digest.c
         )
 
 set(GOST_PROV_SOURCE_FILES
@@ -451,7 +444,7 @@ add_library(gost_engine MODULE ${GOST_ENGINE_SOURCE_FILES})
 # module suffix should be
 set_target_properties(gost_engine PROPERTIES
   PREFIX "" OUTPUT_NAME "gost" SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
-target_link_libraries(gost_engine PRIVATE gost_core gost_err)
+target_link_libraries(gost_engine PRIVATE gost_core gost_new_core_digest gost_new_core_mac gost_err)
 
 if (NOT MSVC)
 # The GOST engine in library form
@@ -460,7 +453,7 @@ set_target_properties(lib_gost_engine PROPERTIES
   COMPILE_DEFINITIONS "BUILDING_ENGINE_AS_LIBRARY"
   PUBLIC_HEADER gost-engine.h
   OUTPUT_NAME "gost")
-target_link_libraries(lib_gost_engine PRIVATE gost_core gost_err)
+target_link_libraries(lib_gost_engine PRIVATE gost_core gost_new_core_digest gost_new_core_mac gost_err)
 endif()
 
 # The GOST provider uses this

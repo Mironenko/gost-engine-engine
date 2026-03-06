@@ -72,7 +72,7 @@ static GOST_CTX *mac_newctx(void *provctx, const GOST_DESC *descriptor)
         gctx->mac_ctx = GET_MEMBER(GOST_mac, gctx->mac, new)(gctx->mac);
 
         if (gctx->mac_ctx == NULL
-            || GET_MEMBER(GOST_mac, gctx->mac, init)(gctx->mac_ctx) <= 0) {
+            || GOST_mac_ctx_init(gctx->mac_ctx) <= 0) {
             mac_freectx(gctx);
             gctx = NULL;
         }

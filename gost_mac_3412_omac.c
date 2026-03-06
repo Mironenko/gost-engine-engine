@@ -43,11 +43,15 @@ typedef struct omac_ctx {
 
 static int omac_init(GOST_mac_ctx *ctx, const char *cipher_name)
 {
-    if (GOST_mac_ctx_test_flags(ctx, EVP_MD_CTX_FLAG_NO_INIT)) {
-        return 1;
+    if (GOST_mac_ctx_data(ctx) == NULL) {
+        GET_MEMBER(GOST_mac, ctx->cls, placement_new)(ctx->cls, ctx);
     }
 
     OMAC_CTX *c = GOST_mac_ctx_data(ctx);
+    if (c == NULL) {
+        return 0;
+    }
+
     memset(c, 0, sizeof(OMAC_CTX));
     c->cipher_name = cipher_name;
     c->key_set = 0;
@@ -171,17 +175,20 @@ static int omac_imit_ctrl(GOST_mac_ctx *ctx, int type, int arg, void *ptr)
             OMAC_CTX *c = GOST_mac_ctx_data(ctx);
             EVP_CIPHER *cipher = NULL;
             int ret = 0;
+            const char* cipher_name = NULL;
 
-            if (c->cipher_name == NULL) {
+            if (!c || c->cipher_name == NULL) {
                 if (GET_MEMBER(GOST_mac, ctx->cls, nid) == NID_magma_mac)
-                    c->cipher_name = SN_magma_cbc;
+                    cipher_name = SN_magma_cbc;
                 else if (GET_MEMBER(GOST_mac, ctx->cls, nid) == NID_grasshopper_mac)
-                    c->cipher_name = SN_grasshopper_cbc;
+                    cipher_name = SN_grasshopper_cbc;
+            } else {
+                cipher_name = c->cipher_name;
             }
             if ((cipher =
-                 (EVP_CIPHER *)EVP_get_cipherbyname(c->cipher_name)) == NULL
+                 (EVP_CIPHER *)EVP_get_cipherbyname(cipher_name)) == NULL
                 && (cipher =
-                    EVP_CIPHER_fetch(NULL, c->cipher_name, NULL)) == NULL) {
+                    EVP_CIPHER_fetch(NULL, cipher_name, NULL)) == NULL) {
                 GOSTerr(GOST_F_OMAC_IMIT_CTRL, GOST_R_CIPHER_NOT_FOUND);
                 goto set_key_end;
             }
@@ -192,6 +199,7 @@ static int omac_imit_ctrl(GOST_mac_ctx *ctx, int type, int arg, void *ptr)
             }
             GOST_mac_ctx_set_flags(ctx, EVP_MD_CTX_FLAG_NO_INIT);
 
+            c = GOST_mac_ctx_data(ctx);
             if (c->key_set) {
                 GOSTerr(GOST_F_OMAC_IMIT_CTRL, GOST_R_BAD_ORDER);
                 goto set_key_end;

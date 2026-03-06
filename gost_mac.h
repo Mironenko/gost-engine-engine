@@ -14,6 +14,7 @@ struct gost_mac_ctx_st;
 typedef struct gost_mac_ctx_st GOST_mac_ctx;
 
 typedef GOST_mac_ctx* (gost_mac_st_new_fn)(const GOST_mac *);
+typedef GOST_mac_ctx* (gost_mac_st_placement_new_fn)(const GOST_mac *, void *);
 typedef void (gost_mac_st_free_fn)(GOST_mac_ctx *);
 
 typedef int (gost_mac_st_init_fn)(GOST_mac_ctx *ctx);
@@ -36,6 +37,7 @@ struct gost_mac_st {
     DECL_MEMBER(size_t, algctx_size);
 
     DECL_MEMBER(gost_mac_st_new_fn *, new);
+    DECL_MEMBER(gost_mac_st_placement_new_fn *, placement_new);
     DECL_MEMBER(gost_mac_st_free_fn *, free);
 
     DECL_MEMBER(gost_mac_st_init_fn *, init);
@@ -56,6 +58,7 @@ IMPL_MEMBER_ACCESSOR(GOST_mac, int, flags);
 IMPL_MEMBER_ACCESSOR(GOST_mac, size_t, algctx_size);
 
 IMPL_MEMBER_ACCESSOR(GOST_mac, gost_mac_st_new_fn *, new);
+IMPL_MEMBER_ACCESSOR(GOST_mac, gost_mac_st_placement_new_fn *, placement_new);
 IMPL_MEMBER_ACCESSOR(GOST_mac, gost_mac_st_free_fn *, free);
 
 IMPL_MEMBER_ACCESSOR(GOST_mac, gost_mac_st_init_fn *, init);
@@ -86,3 +89,4 @@ struct gost_mac_key {
 void* GOST_mac_ctx_data(const GOST_mac_ctx*);
 void GOST_mac_ctx_set_flags(GOST_mac_ctx *ctx, int flags);
 int GOST_mac_ctx_test_flags(const GOST_mac_ctx *ctx, int flags);
+int GOST_mac_ctx_init(GOST_mac_ctx *ctx);
