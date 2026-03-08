@@ -200,6 +200,10 @@ set(GOST_EC_SOURCE_FILES
         ecp_id_tc26_gost_3410_2012_512_paramSetC.c
         )
 
+set(GOST_CMAC_ACPKM_SOURCE_FILES
+        gost_cmac_acpkm.c
+        )
+
 set (GOST_OMAC_SOURCE_FILES
         gost_omac.c
         gost_omac_acpkm.c
@@ -410,9 +414,14 @@ add_library(gosttls12additional STATIC ${GOST_TLS12_ADDITIONAL_SOURCE_FILES})
 set_target_properties(gosttls12additional PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gosttls12additional PRIVATE OpenSSL::Crypto gost_err)
 
+add_library(gostcmacacpkm STATIC ${GOST_CMAC_ACPKM_SOURCE_FILES})
+set_target_properties(gostcmacacpkm PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(gostcmacacpkm PRIVATE OpenSSL::Crypto gost_err)
+
 add_library(gost_core STATIC ${GOST_LIB_SOURCE_FILES})
 set_target_properties(gost_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(gost_core PRIVATE OpenSSL::Crypto gost89 gosthash gosthash2012 gosttls12additional)
+target_link_libraries(gost_core PRIVATE OpenSSL::Crypto gost89 gosthash gosthash2012
+                                        gosttls12additional gostcmacacpkm)
 
 add_library(gost_err STATIC ${GOST_ERR_SOURCE_FILES})
 set_target_properties(gost_err PROPERTIES POSITION_INDEPENDENT_CODE ON)
