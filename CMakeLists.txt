@@ -144,7 +144,7 @@ set(GOST_TLS12_ADDITIONAL_SOURCE_FILES
         gost_tls12_additional_tlstree.c
         )
 
-set(GOST_GRASSHOPPER_SOURCE_FILES
+set(GOST_GRASSHOPPER_CORE_SOURCE_FILES
         gost_grasshopper.h
         gost_grasshopper_core.h
         gost_grasshopper_core.c
@@ -153,8 +153,6 @@ set(GOST_GRASSHOPPER_SOURCE_FILES
         gost_grasshopper_math.h
         gost_grasshopper_galois_precompiled.c
         gost_grasshopper_precompiled.c
-        gost_grasshopper_cipher.h
-        gost_grasshopper_cipher.c
         )
 
 set(GOST_ERR_SOURCE_FILES
@@ -178,6 +176,7 @@ set(GOST_LEGACY_CORE_SOURCE_FILES
         gost_lcl.h
         gost_params.c
         gost_keyexpimp.c
+        gost_grasshopper_cipher.c
         )
 
 set(GOST_NEW_CORE_DIGEST_SOURCE_FILES
@@ -418,10 +417,13 @@ add_library(gostcmacacpkm STATIC ${GOST_CMAC_ACPKM_SOURCE_FILES})
 set_target_properties(gostcmacacpkm PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gostcmacacpkm PRIVATE OpenSSL::Crypto gost_err)
 
+add_library(gostgrasshopper STATIC ${GOST_GRASSHOPPER_CORE_SOURCE_FILES})
+set_target_properties(gostgrasshopper PROPERTIES POSITION_INDEPENDENT_CODE ON)
+
 add_library(gost_core STATIC ${GOST_LIB_SOURCE_FILES})
 set_target_properties(gost_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gost_core PRIVATE OpenSSL::Crypto gost89 gosthash gosthash2012
-                                        gosttls12additional gostcmacacpkm)
+                                        gosttls12additional gostcmacacpkm gostgrasshopper)
 
 add_library(gost_err STATIC ${GOST_ERR_SOURCE_FILES})
 set_target_properties(gost_err PROPERTIES POSITION_INDEPENDENT_CODE ON)
