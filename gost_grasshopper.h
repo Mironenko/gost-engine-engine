@@ -12,7 +12,6 @@ extern "C" {
 
 #include "gost_grasshopper_defines.h"
 #include "gost_grasshopper_math.h"
-#include "gost_grasshopper_cipher.h"
 #include "gost_grasshopper_precompiled.h"
 #include "gost_grasshopper_core.h"
 
