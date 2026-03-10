@@ -226,6 +226,7 @@ set(GOST_LIB_SOURCE_FILES
 set(GOST_ENGINE_SOURCE_FILES
         gost_eng.c
         gost_eng_pmeth.c
+        gost_eng_ameth.c
         )
 
 set(GOST_PROV_SOURCE_FILES
