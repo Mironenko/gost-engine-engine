@@ -10,15 +10,14 @@
 #include <string.h>
 #include <openssl/crypto.h>
 #include <openssl/err.h>
-#include <openssl/engine.h>
 #include <openssl/buffer.h>
-#include "gost_lcl.h"
+#include "gost_module_param.h"
 
 static char *gost_params[GOST_PARAM_MAX + 1] = { NULL };
 static const char *gost_envnames[] =
     { "CRYPT_PARAMS", "GOST_PBE_HMAC", "GOST_PK_FORMAT" };
 
-void gost_param_free()
+void gost_module_params_free()
 {
     int i;
 
@@ -29,18 +28,7 @@ void gost_param_free()
 
 }
 
-int gost_control_func(ENGINE *e, int cmd, long i, void *p, void (*f) (void))
-{
-    int param = cmd - ENGINE_CMD_BASE;
-    int ret = 0;
-    if (param < 0 || param > GOST_PARAM_MAX) {
-        return -1;
-    }
-    ret = gost_set_default_param(param, p);
-    return ret;
-}
-
-const char *get_gost_engine_param(int param)
+const char *get_gost_module_param(int param)
 {
     char *tmp;
     if (param < 0 || param >= GOST_PARAM_MAX)
@@ -57,7 +45,7 @@ const char *get_gost_engine_param(int param)
     return NULL;
 }
 
-int gost_set_default_param(int param, const char *value)
+int set_default_gost_module_param(int param, const char *value)
 {
     const char *tmp;
     if (param < 0 || param >= GOST_PARAM_MAX)

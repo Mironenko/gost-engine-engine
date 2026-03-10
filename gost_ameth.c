@@ -843,7 +843,7 @@ int internal_priv_encode(PKCS8_PRIV_KEY_INFO *p8, EC_KEY *ec, int key_type)
     unsigned char *buf = NULL;
     int key_len = internal_pkey_bits(key_type), i = 0;
     /* unmasked private key */
-    const char *pk_format = get_gost_engine_param(GOST_PARAM_PK_FORMAT);
+    const char *pk_format = get_gost_module_param(GOST_PARAM_PK_FORMAT);
 
     if (!ec || !internal_is_gost_pkey_nid(key_type))
         return 0;

@@ -163,7 +163,7 @@ set(GOST_ERR_SOURCE_FILES
 set(GOST_LEGACY_CORE_SOURCE_FILES
         gost_ameth.c
         gost_pmeth.c
-        gost_ctl.c
+        gost_module_param.c
         gost_asn1.c
         gost_crypt.c
         gost_keywrap.c
@@ -227,6 +227,7 @@ set(GOST_ENGINE_SOURCE_FILES
         gost_eng.c
         gost_eng_pmeth.c
         gost_eng_ameth.c
+        gost_eng_ctl.c
         )
 
 set(GOST_PROV_SOURCE_FILES

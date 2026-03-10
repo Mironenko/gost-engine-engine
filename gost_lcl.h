@@ -21,6 +21,7 @@
 # include "gost89.h"
 # include "gosthash.h"
 # include "gost_mac.h"
+# include "gost_module_param.h"
 
 /*
  * This definitions are added in the patch to OpenSSL 3.4.2 version to support
@@ -38,15 +39,6 @@ EVP_CTRL_SET_TLSTREE_PARAMS definition in OpenSSL is expected."
 #  define EVP_CTRL_SET_TLSTREE_PARAMS 0xFF
 # endif
 
-/* Control commands */
-# define GOST_PARAM_CRYPT_PARAMS 0
-# define GOST_PARAM_PBE_PARAMS 1
-# define GOST_PARAM_PK_FORMAT 2
-# define GOST_PARAM_MAX 3
-# define GOST_CTRL_CRYPT_PARAMS (ENGINE_CMD_BASE+GOST_PARAM_CRYPT_PARAMS)
-# define GOST_CTRL_PBE_PARAMS   (ENGINE_CMD_BASE+GOST_PARAM_PBE_PARAMS)
-# define GOST_CTRL_PK_FORMAT   (ENGINE_CMD_BASE+GOST_PARAM_PK_FORMAT)
-
 typedef struct R3410_ec {
     int nid;
     char *a;
@@ -63,12 +55,6 @@ extern R3410_ec_params R3410_2001_paramset[],
     *R3410_2012_256_paramset, R3410_2012_512_paramset[];
 
 void free_cached_groups(void);
-
-extern const ENGINE_CMD_DEFN gost_cmds[];
-int gost_control_func(ENGINE *e, int cmd, long i, void *p, void (*f) (void));
-const char *get_gost_engine_param(int param);
-int gost_set_default_param(int param, const char *value);
-void gost_param_free(void);
 
 /* Gost-specific pmeth control-function parameters */
 /* For GOST R34.10 parameters */

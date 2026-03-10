@@ -341,7 +341,7 @@ const struct gost_cipher_info *get_encryption_params(ASN1_OBJECT *obj)
     int nid;
     const struct gost_cipher_info *param;
     if (!obj) {
-        const char *params = get_gost_engine_param(GOST_PARAM_CRYPT_PARAMS);
+        const char *params = get_gost_module_param(GOST_PARAM_CRYPT_PARAMS);
         if (!params || !strlen(params)) {
             return get_default_gost_cipher_info();
         }
@@ -1161,7 +1161,7 @@ static int gost_cipher_ctl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
         }
     case EVP_CTRL_PBE_PRF_NID:
         if (ptr) {
-            const char *params = get_gost_engine_param(GOST_PARAM_PBE_PARAMS);
+            const char *params = get_gost_module_param(GOST_PARAM_PBE_PARAMS);
             int nid = NID_id_tc26_hmac_gost_3411_2012_512;
 
             if (params) {

@@ -19,6 +19,7 @@
 #include "gost-engine.h"
 #include "gost_eng_ameth.h"
 #include "gost_eng_pmeth.h"
+#include "gost_eng_ctl.h"
 #include <assert.h>
 
 #include "gost_grasshopper_cipher.h"
@@ -311,7 +312,7 @@ static int gost_engine_destroy(ENGINE* e) {
     for (i = 0; i < OSSL_NELEM(gost_cipher_array); i++)
         GOST_deinit_cipher(gost_cipher_array[i]);
 
-    gost_param_free();
+    gost_module_params_free();
 
     struct gost_meth_minfo *minfo = gost_meth_array;
     for (; minfo->nid; minfo++) {
