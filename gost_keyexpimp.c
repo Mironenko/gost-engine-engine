@@ -34,10 +34,10 @@ typedef struct {
 	size_t wrap_count;
 } GOST_WRAP_CTX;
 
-static int magma_wrap_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
+static int magma_wrap_init(GOST_cipher_ctx *ctx, const unsigned char *key,
 	const unsigned char *iv, int enc)
 {
-	GOST_WRAP_CTX *cctx = EVP_CIPHER_CTX_get_cipher_data(ctx);
+	GOST_WRAP_CTX *cctx = GOST_cipher_ctx_get_cipher_data(ctx);
 	memset(cctx->wrapped, 0, MAX_WRAPPED_KEY_LEN);
 	cctx->wrap_count = 0;
 
@@ -52,11 +52,11 @@ static int magma_wrap_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 	return 1;
 }
 
-static int magma_wrap_do(EVP_CIPHER_CTX *ctx, unsigned char *out,
+static int magma_wrap_do(GOST_cipher_ctx *ctx, unsigned char *out,
 	const unsigned char *in, size_t inl)
 {
-	GOST_WRAP_CTX *cctx = EVP_CIPHER_CTX_get_cipher_data(ctx);
-	int enc = EVP_CIPHER_CTX_encrypting(ctx) ? 1 : 0;
+	GOST_WRAP_CTX *cctx = GOST_cipher_ctx_get_cipher_data(ctx);
+	int enc = GOST_cipher_ctx_encrypting(ctx) ? 1 : 0;
 
 	if (out == NULL)
 		return GOSTKEYLEN;
@@ -87,10 +87,10 @@ static int magma_wrap_do(EVP_CIPHER_CTX *ctx, unsigned char *out,
 	}
 }
 
-static int kuznyechik_wrap_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
+static int kuznyechik_wrap_init(GOST_cipher_ctx *ctx, const unsigned char *key,
 	const unsigned char *iv, int enc)
 {
-	GOST_WRAP_CTX *cctx = EVP_CIPHER_CTX_get_cipher_data(ctx);
+	GOST_WRAP_CTX *cctx = GOST_cipher_ctx_get_cipher_data(ctx);
 	memset(cctx->wrapped, 0, KUZNYECHIK_WRAPPED_KEY_LEN);
 	cctx->wrap_count = 0;
 
@@ -105,11 +105,11 @@ static int kuznyechik_wrap_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
 	return 1;
 }
 
-static int kuznyechik_wrap_do(EVP_CIPHER_CTX *ctx, unsigned char *out,
+static int kuznyechik_wrap_do(GOST_cipher_ctx *ctx, unsigned char *out,
 	const unsigned char *in, size_t inl)
 {
-	GOST_WRAP_CTX *cctx = EVP_CIPHER_CTX_get_cipher_data(ctx);
-	int enc = EVP_CIPHER_CTX_encrypting(ctx) ? 1 : 0;
+	GOST_WRAP_CTX *cctx = GOST_cipher_ctx_get_cipher_data(ctx);
+	int enc = GOST_cipher_ctx_encrypting(ctx) ? 1 : 0;
 
 	if (out == NULL)
 		return GOSTKEYLEN;
@@ -140,12 +140,12 @@ static int kuznyechik_wrap_do(EVP_CIPHER_CTX *ctx, unsigned char *out,
 	}
 }
 
-static int wrap_ctrl (EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
+static int wrap_ctrl (GOST_cipher_ctx *ctx, int type, int arg, void *ptr)
 {
 	switch(type)
 	{
 		case EVP_CTRL_INIT:
-			EVP_CIPHER_CTX_set_flags(ctx, EVP_CIPHER_CTX_FLAG_WRAP_ALLOW);
+			GOST_cipher_ctx_set_flags(ctx, EVP_CIPHER_CTX_FLAG_WRAP_ALLOW);
 			return 1;
 		default:
 			return -2;

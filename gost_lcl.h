@@ -311,6 +311,9 @@ BIGNUM *gost_get0_priv_key(const EVP_PKEY *pkey);
 /* Decrements 8-byte sequence */ 
 int decrement_sequence(unsigned char *seq, int decrement);
 
+/* Forward declaration for GOST_cipher_ctx */
+typedef struct gost_cipher_ctx_st GOST_cipher_ctx;
+
 /* Struct describing cipher and used for init/deinit.*/
 struct gost_cipher_st {
     struct gost_cipher_st *template; /* template struct */
@@ -320,15 +323,15 @@ struct gost_cipher_st {
     int key_len;        /* (bytes) */
     int iv_len;
     int flags;
-    int (*init) (EVP_CIPHER_CTX *ctx, const unsigned char *key,
+    int (*init) (GOST_cipher_ctx *ctx, const unsigned char *key,
                  const unsigned char *iv, int enc);
-    int (*do_cipher)(EVP_CIPHER_CTX *ctx, unsigned char *out,
+    int (*do_cipher)(GOST_cipher_ctx *ctx, unsigned char *out,
                      const unsigned char *in, size_t inl);
-    int (*cleanup)(EVP_CIPHER_CTX *);
+    int (*cleanup)(GOST_cipher_ctx *);
     int ctx_size;
-    int (*set_asn1_parameters)(EVP_CIPHER_CTX *, ASN1_TYPE *);
-    int (*get_asn1_parameters)(EVP_CIPHER_CTX *, ASN1_TYPE *);
-    int (*ctrl)(EVP_CIPHER_CTX *, int type, int arg, void *ptr);
+    int (*set_asn1_parameters)(GOST_cipher_ctx *, ASN1_TYPE *);
+    int (*get_asn1_parameters)(GOST_cipher_ctx *, ASN1_TYPE *);
+    int (*ctrl)(GOST_cipher_ctx *, int type, int arg, void *ptr);
 };
 typedef struct gost_cipher_st GOST_cipher;
 
@@ -416,5 +419,102 @@ typedef struct gost_nid_job GOST_NID_JOB;
 extern GOST_NID_JOB magma_mgm_NID;
 extern GOST_NID_JOB kuznyechik_mgm_NID;
 
+/*============== GOST_cipher_ctx: standalone cipher context API =========*/
+
+/* New GOST cipher context structure */
+struct gost_cipher_ctx_st {
+    const GOST_cipher *cipher;   /* cipher descriptor */
+    unsigned char *buf;          /* mode-specific working buffer */
+    int buf_len;                 /* number of bytes in partial block buffer */
+    int final_used;              /* final block flag */
+    int block_mask;              /* block_size - 1 */
+    int encrypt;                 /* encrypt flag (1) or decrypt (0) */
+    unsigned char final[EVP_MAX_BLOCK_LENGTH]; /* final block buffer */
+    int flags;                   /* cipher flags */
+    unsigned char iv[EVP_MAX_IV_LENGTH];    /* initialization vector */
+    unsigned char original_iv[EVP_MAX_IV_LENGTH]; /* original IV */
+    int iv_len;                  /* IV length */
+    unsigned char key[EVP_MAX_KEY_LENGTH];  /* key */
+    int key_len;                 /* key length */
+    int num;                     /* mode-specific counter */
+    void *app_data;              /* application data */
+    void *cipher_data;           /* cipher-specific data (e.g., ossl_gost_cipher_ctx) */
+};
+
+/* GOST_cipher_ctx management functions */
+GOST_cipher_ctx *GOST_cipher_ctx_new(void);
+void GOST_cipher_ctx_free(GOST_cipher_ctx *ctx);
+int GOST_cipher_ctx_copy(GOST_cipher_ctx *out, const GOST_cipher_ctx *in);
+
+/* GOST_cipher_ctx accessor functions */
+int GOST_cipher_ctx_block_size(GOST_cipher_ctx *ctx);
+unsigned char *GOST_cipher_ctx_buf_noconst(GOST_cipher_ctx *ctx);
+const GOST_cipher *GOST_cipher_ctx_cipher(GOST_cipher_ctx *ctx);
+int GOST_cipher_ctx_encrypting(GOST_cipher_ctx *ctx);
+int GOST_cipher_ctx_iv_length(GOST_cipher_ctx *ctx);
+const unsigned char *GOST_cipher_ctx_iv(GOST_cipher_ctx *ctx);
+unsigned char *GOST_cipher_ctx_iv_noconst(GOST_cipher_ctx *ctx);
+int GOST_cipher_ctx_key_length(GOST_cipher_ctx *ctx);
+int GOST_cipher_ctx_mode(GOST_cipher_ctx *ctx);
+int GOST_cipher_ctx_nid(GOST_cipher_ctx *ctx);
+int GOST_cipher_ctx_num(GOST_cipher_ctx *ctx);
+const unsigned char *GOST_cipher_ctx_original_iv(GOST_cipher_ctx *ctx);
+void *GOST_cipher_ctx_get_app_data(GOST_cipher_ctx *ctx);
+void *GOST_cipher_ctx_get_cipher_data(GOST_cipher_ctx *ctx);
+
+/* GOST_cipher_ctx mutator functions */
+int GOST_cipher_ctx_set_key_length(GOST_cipher_ctx *ctx, int keylen);
+int GOST_cipher_ctx_set_num(GOST_cipher_ctx *ctx, int num);
+int GOST_cipher_ctx_set_padding(GOST_cipher_ctx *ctx, int pad);
+int GOST_cipher_ctx_set_flags(GOST_cipher_ctx *ctx, int flags);
+void GOST_cipher_ctx_set_app_data(GOST_cipher_ctx *ctx, void *data);
+
+/* GOST_cipher_ctx control and operation functions */
+int GOST_cipher_ctx_cleanup(GOST_cipher_ctx *ctx);
+int GOST_cipher_ctx_ctrl(GOST_cipher_ctx *ctx, int type, int arg, void *ptr);
+
+/* GOST_cipher descriptor accessor functions */
+int GOST_cipher_init(GOST_cipher *c);
+int GOST_cipher_type(const GOST_cipher *c);
+int GOST_cipher_nid(const GOST_cipher *c);
+int GOST_cipher_flags(const GOST_cipher *c);
+int GOST_cipher_key_length(const GOST_cipher *c);
+int GOST_cipher_iv_length(const GOST_cipher *c);
+int GOST_cipher_block_size(const GOST_cipher *c);
+int GOST_cipher_mode(const GOST_cipher *c);
+int GOST_cipher_ctx_size(const GOST_cipher *c);
+int (*GOST_cipher_init_fn(const GOST_cipher *c))(GOST_cipher_ctx *ctx,
+                                                 const unsigned char *key,
+                                                 const unsigned char *iv,
+                                                 int enc);
+int (*GOST_cipher_do_cipher_fn(const GOST_cipher *c))(GOST_cipher_ctx *ctx,
+                                                      unsigned char *out,
+                                                      const unsigned char *in,
+                                                      size_t inl);
+int (*GOST_cipher_cleanup_fn(const GOST_cipher *c))(GOST_cipher_ctx *ctx);
+int (*GOST_cipher_ctrl_fn(const GOST_cipher *c))(GOST_cipher_ctx *ctx,
+                                                 int type, int arg,
+                                                 void *ptr);
+
+/* High-level GOST cipher operations */
+int GOST_CipherInit_ex(GOST_cipher_ctx *ctx, const GOST_cipher *cipher,
+                       const unsigned char *key, const unsigned char *iv, int enc);
+int GOST_CipherUpdate(GOST_cipher_ctx *ctx, unsigned char *out, int *outl,
+                      const unsigned char *in, int inl);
+int GOST_CipherFinal(GOST_cipher_ctx *ctx, unsigned char *out, int *outl);
+
+/* EVP bridge for ENGINE ciphers */
+int gost_engine_cipher_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
+                            const unsigned char *iv, int enc);
+int gost_engine_cipher_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
+                                 const unsigned char *in, size_t inl);
+int gost_engine_cipher_cleanup(EVP_CIPHER_CTX *ctx);
+int gost_engine_cipher_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr);
+int gost_engine_cipher_set_asn1_parameters(EVP_CIPHER_CTX *ctx,
+                                           ASN1_TYPE *params);
+int gost_engine_cipher_get_asn1_parameters(EVP_CIPHER_CTX *ctx,
+                                           ASN1_TYPE *params);
+
 #endif
 /* vim: set expandtab cinoptions=\:0,l1,t0,g0,(0 sw=4 : */
+

@@ -126,6 +126,33 @@ static int mac_init(void *mctx, const unsigned char *key,
                     size_t keylen, const OSSL_PARAM params[])
 {
     GOST_CTX *gctx = mctx;
+    const OSSL_PARAM *p = NULL;
+
+    if (params != NULL
+        && (p = OSSL_PARAM_locate_const(params, "key-mesh")) != NULL
+        && key != NULL) {
+        size_t key_mesh = 0;
+        int i_cipher_key_mesh = 0, *p_cipher_key_mesh = NULL;
+
+        if (!OSSL_PARAM_get_size_t(p, &key_mesh))
+            return 0;
+
+        if ((p = OSSL_PARAM_locate_const(params, "cipher-key-mesh")) != NULL) {
+            size_t cipher_key_mesh = 0;
+
+            if (!OSSL_PARAM_get_size_t(p, &cipher_key_mesh))
+                return 0;
+            i_cipher_key_mesh = (int)cipher_key_mesh;
+            p_cipher_key_mesh = &i_cipher_key_mesh;
+        }
+
+        return (key == NULL
+                || GOST_digest_ctx_ctrl(gctx->dctx, EVP_MD_CTRL_SET_KEY,
+                                   (int)keylen, (void *)key) > 0)
+            && mac_set_ctx_params(gctx, params)
+            && GOST_digest_ctx_ctrl(gctx->dctx, EVP_CTRL_KEY_MESH,
+                               (int)key_mesh, p_cipher_key_mesh) > 0;
+    }
 
     return mac_set_ctx_params(gctx, params)
         && (key == NULL
@@ -246,24 +273,12 @@ static int mac_set_ctx_params(void *mctx, const OSSL_PARAM params[])
     if ((p = OSSL_PARAM_locate_const(params, "size")) != NULL
         && !OSSL_PARAM_get_size_t(p, &gctx->mac_size))
         return 0;
-    if ((p = OSSL_PARAM_locate_const(params, "key")) != NULL) {
-        const unsigned char *key = NULL;
-        size_t keylen = 0;
-        int ret;
-
-        if (!OSSL_PARAM_get_octet_string_ptr(p, (const void **)&key, &keylen))
-            return 0;
-
-        ret = GOST_digest_ctx_ctrl(gctx->dctx, EVP_MD_CTRL_SET_KEY,
-                              (int)keylen, (void *)key);
-        if (ret <= 0 && ret != -2)
-            return 0;
-    }
     if ((p = OSSL_PARAM_locate_const(params, "xof")) != NULL
         && (!(GOST_digest_flags(GOST_digest_ctx_digest(gctx->dctx)) & EVP_MD_FLAG_XOF)
             || !OSSL_PARAM_get_int(p, &gctx->xof_mode)))
         return 0;
-    if ((p = OSSL_PARAM_locate_const(params, "key-mesh")) != NULL) {
+    if ((p = OSSL_PARAM_locate_const(params, "key-mesh")) != NULL
+        && OSSL_PARAM_locate_const(params, "key") == NULL) {
         size_t key_mesh = 0;
         int i_cipher_key_mesh = 0, *p_cipher_key_mesh = NULL;
 
@@ -283,6 +298,19 @@ static int mac_set_ctx_params(void *mctx, const OSSL_PARAM params[])
 
         if (GOST_digest_ctx_ctrl(gctx->dctx, EVP_CTRL_KEY_MESH,
                             key_mesh, p_cipher_key_mesh) <= 0)
+            return 0;
+    }
+    if ((p = OSSL_PARAM_locate_const(params, "key")) != NULL) {
+        const unsigned char *key = NULL;
+        size_t keylen = 0;
+        int ret;
+
+        if (!OSSL_PARAM_get_octet_string_ptr(p, (const void **)&key, &keylen))
+            return 0;
+
+        ret = GOST_digest_ctx_ctrl(gctx->dctx, EVP_MD_CTRL_SET_KEY,
+                              (int)keylen, (void *)key);
+        if (ret <= 0 && ret != -2)
             return 0;
     }
     return 1;

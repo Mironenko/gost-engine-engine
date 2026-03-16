@@ -180,6 +180,8 @@ set(GOST_CORE_SOURCE_FILES
         gost_keyexpimp.c
         gost_digest.c
         gost_digest_ctx.c
+        gost_cipher_ctx.c
+        gost_evp_cipher_bridge.c
         )
 
 set(GOST_EC_SOURCE_FILES
@@ -211,6 +213,7 @@ set(GOST_ENGINE_SOURCE_FILES
         gost_eng.c
         gost_eng_digest.c
         gost_eng_digest_define.c
+        gost_eng_cipher.c
         )
 
 set(GOST_PROV_SOURCE_FILES
