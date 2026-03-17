@@ -340,28 +340,4 @@ const OSSL_ALGORITHM GOST_prov_ciphers[] = {
 };
 
 void GOST_prov_deinit_ciphers(void) {
-    static GOST_cipher *list[] = {
-        &Gost28147_89_cipher,
-        &Gost28147_89_cnt_cipher,
-        &Gost28147_89_cnt_12_cipher,
-        &Gost28147_89_cbc_cipher,
-        &grasshopper_ecb_cipher,
-        &grasshopper_cbc_cipher,
-        &grasshopper_cfb_cipher,
-        &grasshopper_ofb_cipher,
-        &grasshopper_ctr_cipher,
-        &magma_cbc_cipher,
-        &magma_ctr_cipher,
-        &magma_ctr_acpkm_cipher,
-        &magma_ctr_acpkm_omac_cipher,
-        &magma_mgm_cipher,
-        &grasshopper_ctr_acpkm_cipher,
-        &grasshopper_ctr_acpkm_omac_cipher,
-        &grasshopper_mgm_cipher,
-    };
-    size_t i;
-#define elems(l) (sizeof(l) / sizeof(l[0]))
-
-    for (i = 0; i < elems(list); i++)
-        GOST_deinit_cipher(list[i]);
 }

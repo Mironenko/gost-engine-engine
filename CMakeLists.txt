@@ -181,7 +181,6 @@ set(GOST_CORE_SOURCE_FILES
         gost_digest.c
         gost_digest_ctx.c
         gost_cipher_ctx.c
-        gost_evp_cipher_bridge.c
         )
 
 set(GOST_EC_SOURCE_FILES

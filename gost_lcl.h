@@ -335,9 +335,6 @@ struct gost_cipher_st {
 };
 typedef struct gost_cipher_st GOST_cipher;
 
-EVP_CIPHER *GOST_init_cipher(GOST_cipher *c);
-void GOST_deinit_cipher(GOST_cipher *c);
-
 /* ENGINE implementation data */
 extern GOST_cipher Gost28147_89_cipher;
 extern GOST_cipher Gost28147_89_cbc_cipher;
