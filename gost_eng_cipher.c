@@ -4,17 +4,16 @@
 #include "gost_lcl.h"
 #include "gost_eng_cipher.h"
 
-/*
- * Single level template accessor.
- * Note: that you cannot template 0 value.
- */
-#define TPL(st,field) ( \
-    ((st)->field) ? ((st)->field) : TPL_VAL(st,field) \
-)
-
-#define TPL_VAL(st,field) ( \
-    ((st)->template ? (st)->template->field : 0) \
-)
+int gost_engine_cipher_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
+                            const unsigned char *iv, int enc);
+int gost_engine_cipher_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
+                                 const unsigned char *in, size_t inl);
+int gost_engine_cipher_cleanup(EVP_CIPHER_CTX *ctx);
+int gost_engine_cipher_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr);
+int gost_engine_cipher_set_asn1_parameters(EVP_CIPHER_CTX *ctx,
+                                           ASN1_TYPE *params);
+int gost_engine_cipher_get_asn1_parameters(EVP_CIPHER_CTX *ctx,
+                                           ASN1_TYPE *params);
 
 /*
  * Single level template accessor.
