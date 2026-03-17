@@ -52,13 +52,23 @@ int gost_kdftree2012_256(unsigned char *keyout, size_t keyout_len,
         len_repr_len--;
     }
 
+    const EVP_MD* md = EVP_get_digestbynid(NID_id_GostR3411_2012_256);
+    EVP_MD* fetched_md = NULL;
+    if (!md) {
+        md = fetched_md = EVP_MD_fetch(NULL, OBJ_nid2sn(NID_id_GostR3411_2012_256), NULL);
+    }
+
+    if (!md) {
+        return 0;
+    }
+
     for (i = 1; i <= iters; i++) {
         uint32_t iter_net = be32(i);
         unsigned char *rep_ptr =
             ((unsigned char *)&iter_net) + (4 - representation);
 
         if (HMAC_Init_ex(ctx, key, keylen,
-                         EVP_get_digestbynid(NID_id_GostR3411_2012_256),
+                         md,
                          NULL) <= 0
             || HMAC_Update(ctx, rep_ptr, representation) <= 0
             || HMAC_Update(ctx, label, label_len) <= 0
@@ -68,6 +78,7 @@ int gost_kdftree2012_256(unsigned char *keyout, size_t keyout_len,
             || HMAC_Final(ctx, ptr, NULL) <= 0) {
             GOSTerr(GOST_F_GOST_KDFTREE2012_256, ERR_R_INTERNAL_ERROR);
             HMAC_CTX_free(ctx);
+            EVP_MD_free(fetched_md);
             return 0;
         }
 
@@ -76,6 +87,7 @@ int gost_kdftree2012_256(unsigned char *keyout, size_t keyout_len,
     }
 
     HMAC_CTX_free(ctx);
+    EVP_MD_free(fetched_md);
 
     return 1;
 }
