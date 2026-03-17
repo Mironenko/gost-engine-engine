@@ -180,7 +180,7 @@ set(GOST_CORE_SOURCE_FILES
         gost_keyexpimp.c
         gost_digest.c
         gost_digest_ctx.c
-        gost_cipher_ctx.c
+        gost_cipher.c
         )
 
 set(GOST_EC_SOURCE_FILES
@@ -213,7 +213,11 @@ set(GOST_ENGINE_SOURCE_FILES
         gost_eng_digest.c
         gost_eng_digest_define.c
         gost_eng_cipher.c
+        gost_cipher_ctx_eng.c
         )
+
+set(GOST_CIPHER_CTX_SOURCE_FILES
+        gost_cipher_ctx.c)
 
 set(GOST_PROV_SOURCE_FILES
         gost_prov.c
@@ -272,13 +276,13 @@ set_tests_properties(ciphers-with-provider
 # test_curves is an internals testing program, it doesn't need a test env
 
 add_executable(test_ecdhe test_ecdhe.c)
-target_link_libraries(test_ecdhe gost_core gost_err)
+target_link_libraries(test_ecdhe gost_core gost_err gost_cipher_ctx)
 add_test(NAME ecdhe COMMAND test_ecdhe)
 set_tests_properties(ecdhe
   PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_ENGINE}")
 
 add_executable(test_curves test_curves.c)
-target_link_libraries(test_curves gost_core gost_err)
+target_link_libraries(test_curves gost_core gost_err gost_cipher_ctx)
 add_test(NAME curves COMMAND test_curves)
 
 add_executable(test_params test_params.c)
@@ -372,7 +376,7 @@ endif()
 
 if(NOT MSVC)
   add_executable(sign benchmark/sign.c)
-  target_link_libraries(sign gost_core gost_err ${CLOCK_GETTIME_LIB})
+  target_link_libraries(sign gost_core gost_err ${CLOCK_GETTIME_LIB} gost_cipher_ctx)
 endif()
 
 # All that may need to load just built engine will have path to it defined.
@@ -417,6 +421,10 @@ add_library(gost_err STATIC ${GOST_ERR_SOURCE_FILES})
 set_target_properties(gost_err PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gost_err PRIVATE OpenSSL::Crypto)
 
+add_library(gost_cipher_ctx STATIC ${GOST_CIPHER_CTX_SOURCE_FILES})
+set_target_properties(gost_cipher_ctx PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(gost_cipher_ctx PRIVATE OpenSSL::Crypto)
+
 # The GOST engine in module form
 add_library(gost_engine MODULE ${GOST_ENGINE_SOURCE_FILES})
 # Set the suffix explicitly to adapt to OpenSSL's idea of what a
@@ -440,24 +448,24 @@ add_subdirectory(libprov)
 
 # The GOST provider in module form
 add_library(gost_prov MODULE
-  ${GOST_PROV_SOURCE_FILES} ${GOST_ENGINE_SOURCE_FILES}
+  ${GOST_PROV_SOURCE_FILES}
   )
 set_target_properties(gost_prov PROPERTIES
   PREFIX "" OUTPUT_NAME "gostprov" SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX}
   COMPILE_DEFINITIONS "BUILDING_GOST_PROVIDER;OPENSSL_NO_DYNAMIC_ENGINE"
   )
-target_link_libraries(gost_prov PRIVATE gost_core libprov)
+target_link_libraries(gost_prov PRIVATE gost_core libprov gost_cipher_ctx)
 
 if (NOT MSVC)
 # The GOST provider in library form
 add_library(lib_gost_prov SHARED
-  ${GOST_PROV_SOURCE_FILES} ${GOST_ENGINE_SOURCE_FILES}
+  ${GOST_PROV_SOURCE_FILES}
   )
 set_target_properties(lib_gost_prov PROPERTIES
   OUTPUT_NAME "gostprov"
   COMPILE_DEFINITIONS "BUILDING_GOST_PROVIDER;BUILDING_PROVIDER_AS_LIBRARY;OPENSSL_NO_DYNAMIC_ENGINE"
   )
-target_link_libraries(lib_gost_prov PRIVATE gost_core libprov)
+target_link_libraries(lib_gost_prov PRIVATE gost_core libprov gost_cipher_ctx)
 endif()
 
 set(GOST_SUM_SOURCE_FILES

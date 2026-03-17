@@ -63,9 +63,7 @@ static PROV_CTX *provider_ctx_new(const OSSL_CORE_HANDLE *core,
 
     if ((ctx = OPENSSL_zalloc(sizeof(*ctx))) != NULL
         && (ctx->proverr_handle = proverr_new_handle(core, in)) != NULL
-        && (ctx->libctx = OSSL_LIB_CTX_new_child(core, in)) != NULL
-        && (ctx->e = ENGINE_new()) != NULL
-        && populate_gost_engine(ctx->e)) {
+        && (ctx->libctx = OSSL_LIB_CTX_new_child(core, in)) != NULL) {
         ctx->core_handle = core;
 
         /* Ugly hack */

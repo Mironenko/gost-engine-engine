@@ -3,6 +3,7 @@
 #include <openssl/objects.h>
 #include "gost_lcl.h"
 #include "gost_eng_cipher.h"
+#include "gost_cipher_ctx_eng.h"
 
 int gost_engine_cipher_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                             const unsigned char *iv, int enc);
@@ -29,6 +30,7 @@ int gost_engine_cipher_get_asn1_parameters(EVP_CIPHER_CTX *ctx,
 
 static EVP_CIPHER *GOST_init_cipher(GOST_cipher *c)
 {
+    GOST_cipher_init(c);
     /* Some sanity checking. */
     int flags = c->flags | TPL_VAL(c, flags);
     int block_size = TPL(c, block_size);
@@ -50,15 +52,13 @@ static EVP_CIPHER *GOST_init_cipher(GOST_cipher *c)
         OPENSSL_assert(!(flags & EVP_CIPH_CUSTOM_IV));
 
     EVP_CIPHER *cipher = NULL;
-    flags |= EVP_CIPH_CUSTOM_COPY;
-
     if (!(cipher = EVP_CIPHER_meth_new(c->nid, block_size, TPL(c, key_len)))
         || !EVP_CIPHER_meth_set_iv_length(cipher, TPL(c, iv_len))
         || !EVP_CIPHER_meth_set_flags(cipher, flags)
         || !EVP_CIPHER_meth_set_init(cipher, gost_engine_cipher_init)
         || !EVP_CIPHER_meth_set_do_cipher(cipher, gost_engine_cipher_do_cipher)
         || !EVP_CIPHER_meth_set_cleanup(cipher, gost_engine_cipher_cleanup)
-        || !EVP_CIPHER_meth_set_impl_ctx_size(cipher, (int)sizeof(GOST_cipher_ctx *))
+        || !EVP_CIPHER_meth_set_impl_ctx_size(cipher, TPL(c, ctx_size))
         || !EVP_CIPHER_meth_set_set_asn1_params(cipher, gost_engine_cipher_set_asn1_parameters)
         || !EVP_CIPHER_meth_set_get_asn1_params(cipher, gost_engine_cipher_get_asn1_parameters)
         || !EVP_CIPHER_meth_set_ctrl(cipher, gost_engine_cipher_ctrl)) {
@@ -124,36 +124,7 @@ static GOST_cipher *gost_cipher_from_nid(int nid)
     return NULL;
 }
 
-static GOST_cipher_ctx **gost_engine_get_gctx_slot(EVP_CIPHER_CTX *ctx)
-{
-    return (GOST_cipher_ctx **)EVP_CIPHER_CTX_get_cipher_data(ctx);
-}
-
-static GOST_cipher_ctx *gost_engine_get_gctx(EVP_CIPHER_CTX *ctx)
-{
-    GOST_cipher_ctx **slot = gost_engine_get_gctx_slot(ctx);
-    return slot != NULL ? *slot : NULL;
-}
-
-static int gost_engine_ensure_gctx(EVP_CIPHER_CTX *ctx)
-{
-    GOST_cipher_ctx **slot = gost_engine_get_gctx_slot(ctx);
-    GOST_cipher_ctx *gctx;
-
-    if (slot == NULL)
-        return 0;
-    if (*slot != NULL)
-        return 1;
-
-    gctx = GOST_cipher_ctx_new();
-    if (gctx == NULL)
-        return 0;
-    *slot = gctx;
-    return 1;
-}
-
-int gost_engine_cipher_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
-                            const unsigned char *iv, int enc)
+int GOST_cipher_ctx_instance(EVP_CIPHER_CTX *ctx, GOST_cipher_ctx *gctx)
 {
     const EVP_CIPHER *cipher = EVP_CIPHER_CTX_cipher(ctx);
     GOST_cipher *desc;
@@ -163,90 +134,82 @@ int gost_engine_cipher_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
     desc = gost_cipher_from_nid(EVP_CIPHER_nid(cipher));
     if (desc == NULL)
         return 0;
-    if (!GOST_cipher_init(desc) || !gost_engine_ensure_gctx(ctx))
+
+    *gctx = (GOST_cipher_ctx) {
+        .cipher = desc,
+        .cctx = ctx
+    };
+    return 1;
+}
+
+int gost_engine_cipher_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
+                            const unsigned char *iv, int enc)
+{
+    GOST_cipher_ctx gctx;
+    if (!GOST_cipher_ctx_instance(ctx, &gctx)) {
         return 0;
-    return GOST_CipherInit_ex(gost_engine_get_gctx(ctx), desc, key, iv, enc);
+    }
+    if (gctx.cipher->init == NULL)
+        return 1;
+    return gctx.cipher->init(&gctx, key, iv, enc);
 }
 
 int gost_engine_cipher_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
                                  const unsigned char *in, size_t inl)
 {
-    int outl = 0;
-    GOST_cipher_ctx *gctx = gost_engine_get_gctx(ctx);
-
-    if (gctx == NULL)
+    GOST_cipher_ctx gctx;
+    if (!GOST_cipher_ctx_instance(ctx, &gctx)) {
         return 0;
-    return GOST_CipherUpdate(gctx, out, &outl, in, (int)inl);
+    }
+    if (gctx.cipher->do_cipher == NULL)
+        return 1;
+    return gctx.cipher->do_cipher(&gctx, out, in, inl);
 }
 
 int gost_engine_cipher_cleanup(EVP_CIPHER_CTX *ctx)
 {
-    GOST_cipher_ctx *gctx = gost_engine_get_gctx(ctx);
-
-    if (gctx == NULL)
+    GOST_cipher_ctx gctx;
+    if (!GOST_cipher_ctx_instance(ctx, &gctx)) {
+        return 0;
+    }
+    if (gctx.cipher->cleanup == NULL)
         return 1;
-    *gost_engine_get_gctx_slot(ctx) = NULL;
-    GOST_cipher_ctx_free(gctx);
-    return 1;
+    return gctx.cipher->cleanup(&gctx);
 }
 
 int gost_engine_cipher_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 {
-    GOST_cipher_ctx *gctx = gost_engine_get_gctx(ctx);
-
-    if (type == EVP_CTRL_INIT)
-        return gost_engine_ensure_gctx(ctx);
-    if (gctx == NULL)
+    GOST_cipher_ctx gctx;
+    if (!GOST_cipher_ctx_instance(ctx, &gctx)) {
         return 0;
-    if (type == EVP_CTRL_COPY && ptr != NULL) {
-        EVP_CIPHER_CTX *out = ptr;
-        GOST_cipher_ctx **outslot = gost_engine_get_gctx_slot(out);
-        GOST_cipher_ctx *outg;
-
-        if (outslot == NULL)
-            return 0;
-
-        if (*outslot != NULL && *outslot != gctx)
-            GOST_cipher_ctx_free(*outslot);
-
-        outg = GOST_cipher_ctx_new();
-        if (outg == NULL)
-            return 0;
-
-        *outslot = outg;
-        return GOST_cipher_ctx_copy(outg, gctx);
     }
-    return GOST_cipher_ctx_ctrl(gctx, type, arg, ptr);
+    if (gctx.cipher->ctrl == NULL)
+        return -2;
+    return gctx.cipher->ctrl(&gctx, type, arg, ptr);
 }
 
 int gost_engine_cipher_set_asn1_parameters(EVP_CIPHER_CTX *ctx,
                                            ASN1_TYPE *params)
 {
-    const EVP_CIPHER *cipher = EVP_CIPHER_CTX_cipher(ctx);
-    GOST_cipher *desc;
-    GOST_cipher_ctx *gctx = gost_engine_get_gctx(ctx);
-
-    if (cipher == NULL || gctx == NULL)
+    GOST_cipher_ctx gctx;
+    if (!GOST_cipher_ctx_instance(ctx, &gctx)) {
         return 0;
-    desc = gost_cipher_from_nid(EVP_CIPHER_nid(cipher));
-    if (desc == NULL || desc->set_asn1_parameters == NULL)
-        return 0;
-    return desc->set_asn1_parameters(gctx, params);
+    }
+    if (gctx.cipher->set_asn1_parameters == NULL)
+        return 1;
+    return gctx.cipher->set_asn1_parameters(&gctx, params);
 }
 
 int gost_engine_cipher_get_asn1_parameters(EVP_CIPHER_CTX *ctx,
                                            ASN1_TYPE *params)
 {
-    const EVP_CIPHER *cipher = EVP_CIPHER_CTX_cipher(ctx);
-    GOST_cipher *desc;
-    GOST_cipher_ctx *gctx = gost_engine_get_gctx(ctx);
-
-    if (cipher == NULL || gctx == NULL)
+    GOST_cipher_ctx gctx;
+    if (!GOST_cipher_ctx_instance(ctx, &gctx)) {
         return 0;
-    desc = gost_cipher_from_nid(EVP_CIPHER_nid(cipher));
-    if (desc == NULL || desc->get_asn1_parameters == NULL)
-        return 0;
-    return desc->get_asn1_parameters(gctx, params);
+    }
+    if (gctx.cipher->get_asn1_parameters == NULL)
+        return 1;
+    return gctx.cipher->get_asn1_parameters(&gctx, params);
 }
 
 /* Define engine-exposed instances for all GOST ciphers */
