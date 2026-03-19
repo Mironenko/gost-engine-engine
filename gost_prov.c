@@ -48,7 +48,6 @@ void ERR_GOST_error(int function, int reason, char *file, int line)
 static void provider_ctx_free(PROV_CTX *ctx)
 {
     if (ctx != NULL) {
-        ENGINE_free(ctx->e);
         proverr_free_handle(ctx->proverr_handle);
         OSSL_LIB_CTX_free(ctx->libctx);
     }
