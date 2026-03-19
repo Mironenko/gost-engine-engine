@@ -138,13 +138,13 @@ static int cipher_get_ctx_params(void *vgctx, OSSL_PARAM params[])
             return 0;
     }
     if ((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_IV)) != NULL) {
-        if (!OSSL_PARAM_set_octet_string(p,
+        if (!OSSL_PARAM_set_octet_string_or_ptr(p,
                 GOST_cipher_ctx_iv(gctx->cctx),
                 (size_t)GOST_cipher_ctx_iv_length(gctx->cctx)))
             return 0;
     }
     if ((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_UPDATED_IV)) != NULL) {
-        if (!OSSL_PARAM_set_octet_string(p,
+        if (!OSSL_PARAM_set_octet_string_or_ptr(p,
                 GOST_cipher_ctx_iv(gctx->cctx),
                 (size_t)GOST_cipher_ctx_iv_length(gctx->cctx)))
             return 0;
