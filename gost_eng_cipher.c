@@ -3,7 +3,13 @@
 #include <openssl/objects.h>
 #include "gost_lcl.h"
 #include "gost_eng_cipher.h"
-#include "gost_cipher_ctx_eng.h"
+#include "gost_cipher_ctx.h"
+#include "gost_cipher_ctx_evp_details.h"
+
+struct gost_eng_cipher_st {
+    GOST_cipher *cipher;
+    EVP_CIPHER *evp_cipher;
+};
 
 int gost_engine_cipher_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                             const unsigned char *iv, int enc);

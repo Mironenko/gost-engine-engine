@@ -233,12 +233,12 @@ static int gost_ciphers(ENGINE *e, const EVP_CIPHER **cipher,
 
         *nids = n;
         for (i = 0; i < OSSL_NELEM(gost_cipher_array); i++)
-            *n++ = GOST_cipher_nid(gost_cipher_array[i]->cipher);
+            *n++ = GOST_eng_cipher_nid(gost_cipher_array[i]);
         return i;
     }
 
     for (i = 0; i < OSSL_NELEM(gost_cipher_array); i++)
-        if (nid == GOST_cipher_nid(gost_cipher_array[i]->cipher)) {
+        if (nid == GOST_eng_cipher_nid(gost_cipher_array[i])) {
             *cipher = GOST_eng_cipher_init(gost_cipher_array[i]);
             return 1;
         }

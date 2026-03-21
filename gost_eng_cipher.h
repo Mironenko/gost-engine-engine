@@ -3,12 +3,8 @@
 #include <openssl/evp.h>
 #include "gost_lcl.h"
 
+struct gost_eng_cipher_st;
 typedef struct gost_eng_cipher_st GOST_eng_cipher;
-struct gost_eng_cipher_st {
-    GOST_cipher *cipher;
-    EVP_CIPHER *evp_cipher;
-    /* control function intentionally omitted for now */
-};
 
 EVP_CIPHER *GOST_eng_cipher_init(GOST_eng_cipher *c);
 void GOST_eng_cipher_deinit(GOST_eng_cipher *c);

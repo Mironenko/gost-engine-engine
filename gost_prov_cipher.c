@@ -12,6 +12,7 @@
 #include <openssl/core_dispatch.h>
 #include <openssl/core_names.h>
 #include "gost_prov.h"
+#include "gost_cipher_ctx_prov.h"
 #include "gost_lcl.h"
 
 /*
@@ -137,17 +138,23 @@ static int cipher_get_ctx_params(void *vgctx, OSSL_PARAM params[])
                 (size_t)GOST_cipher_key_length(gctx->descriptor)))
             return 0;
     }
-    if ((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_IV)) != NULL) {
-        if (!OSSL_PARAM_set_octet_string_or_ptr(p,
+    if (((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_IV)) != NULL)
+        && !OSSL_PARAM_set_octet_ptr(p,
                 GOST_cipher_ctx_iv(gctx->cctx),
-                (size_t)GOST_cipher_ctx_iv_length(gctx->cctx)))
-            return 0;
+                (size_t)GOST_cipher_ctx_iv_length(gctx->cctx))
+        && !OSSL_PARAM_set_octet_string(p,
+                GOST_cipher_ctx_iv(gctx->cctx),
+                (size_t)GOST_cipher_ctx_iv_length(gctx->cctx))) {
+        return 0;
     }
-    if ((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_UPDATED_IV)) != NULL) {
-        if (!OSSL_PARAM_set_octet_string_or_ptr(p,
+    if (((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_UPDATED_IV)) != NULL)
+        && !OSSL_PARAM_set_octet_ptr(p,
                 GOST_cipher_ctx_iv(gctx->cctx),
-                (size_t)GOST_cipher_ctx_iv_length(gctx->cctx)))
-            return 0;
+                (size_t)GOST_cipher_ctx_iv_length(gctx->cctx))
+        && !OSSL_PARAM_set_octet_string(p,
+                GOST_cipher_ctx_iv(gctx->cctx),
+                (size_t)GOST_cipher_ctx_iv_length(gctx->cctx))) {
+        return 0;
     }
     return 1;
 }

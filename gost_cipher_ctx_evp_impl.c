@@ -1,46 +1,14 @@
 #include <string.h>
 #include <openssl/crypto.h>
 #include <openssl/evp.h>
-#include "gost_lcl.h"
+#include "gost_cipher_ctx.h"
+#include "gost_cipher_ctx_evp_details.h"
 
 /* Engine-specific GOST_cipher_ctx implementation.
  * This implementation wraps an EVP_CIPHER_CTX and a pointer to the
  * corresponding GOST_cipher descriptor. All operations are forwarded to
  * the underlying EVP_CIPHER_CTX or to the GOST_cipher descriptor as needed.
  */
-
-struct gost_cipher_ctx_st {
-    const GOST_cipher *cipher;   /* cipher descriptor */
-    EVP_CIPHER_CTX *cctx;        /* underlying EVP context */
-};
-
-// GOST_cipher_ctx *GOST_cipher_ctx_new(void)
-// {
-//     return NULL;
-//     // GOST_cipher_ctx *ctx = OPENSSL_zalloc(sizeof(*ctx));
-//     // if (ctx == NULL)
-//     //     return NULL;
-//     // ctx->cctx = EVP_CIPHER_CTX_new();
-//     // if (ctx->cctx == NULL) {
-//     //     OPENSSL_free(ctx);
-//     //     return NULL;
-//     // }
-//     // return ctx;
-// }
-
-// void GOST_cipher_ctx_free(GOST_cipher_ctx *ctx)
-// {
-//     return NULL;
-// }
-
-GOST_cipher_ctx GOST_cipher_ctx_val(GOST_cipher* cipher, EVP_CIPHER_CTX *cctx)
-{
-    GOST_cipher_ctx gctx = {
-        .cipher = cipher,
-        .cctx = cctx
-    };
-    return gctx;
-}
 
 int GOST_cipher_ctx_copy(GOST_cipher_ctx *out, const GOST_cipher_ctx *in)
 {
@@ -164,46 +132,3 @@ int GOST_cipher_ctx_ctrl(GOST_cipher_ctx *ctx, int type, int arg, void *ptr)
 {
     return EVP_CIPHER_CTX_ctrl(ctx->cctx, type, arg, ptr);
 }
-
-// int GOST_CipherInit_ex(GOST_cipher_ctx *ctx, const GOST_cipher *cipher,
-//                        const unsigned char *key, const unsigned char *iv,
-//                        int enc)
-// {
-//     if (ctx == NULL || ctx->cctx == NULL)
-//         return 0;
-
-//     if (cipher != NULL) {
-//         ctx->cipher = cipher;
-//         /* Set underlying EVP_CIPHER from gid-nid mapping via GOST_init_cipher */
-//         EVP_CIPHER *evp_cipher = GOST_init_cipher((GOST_cipher *)cipher);
-//         if (evp_cipher == NULL)
-//             return 0;
-//         if (!EVP_CipherInit_ex(ctx->cctx, evp_cipher, NULL, NULL, NULL, enc))
-//             return 0;
-//     }
-
-//     /* Forward key/iv to underlying EVP context */
-//     if (key != NULL || iv != NULL) {
-//         if (!EVP_CipherInit_ex(ctx->cctx, NULL, NULL, key, iv, -1))
-//             return 0;
-//     }
-
-//     return 1;
-// }
-
-// int GOST_CipherUpdate(GOST_cipher_ctx *ctx, unsigned char *out, int *outl,
-//                       const unsigned char *in, int inl)
-// {
-//     if (ctx == NULL || ctx->cctx == NULL)
-//         return 0;
-//     int ret = EVP_CipherUpdate(ctx->cctx, out, outl, in, inl);
-//     return ret != 0;
-// }
-
-// int GOST_CipherFinal(GOST_cipher_ctx *ctx, unsigned char *out, int *outl)
-// {
-//     if (ctx == NULL || ctx->cctx == NULL)
-//         return 0;
-//     int ret = EVP_CipherFinal_ex(ctx->cctx, out, outl);
-//     return ret != 0;
-// }

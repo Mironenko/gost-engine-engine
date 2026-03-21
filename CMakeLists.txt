@@ -162,7 +162,7 @@ set(GOST_ERR_SOURCE_FILES
         e_gost_err.h
         )
 
-set(GOST_CORE_SOURCE_FILES
+set(GOST_COMMON_CORE_SOURCE_FILES
         gost_ameth.c
         gost_pmeth.c
         gost_ctl.c
@@ -201,8 +201,8 @@ set (GOST_OMAC_SOURCE_FILES
         gost_omac_acpkm.c
         )
 
-set(GOST_LIB_SOURCE_FILES
-        ${GOST_CORE_SOURCE_FILES}
+set(GOST_COMMON_CORE_SOURCE_FILES
+        ${GOST_COMMON_CORE_SOURCE_FILES}
         ${GOST_GRASSHOPPER_SOURCE_FILES}
         ${GOST_EC_SOURCE_FILES}
         ${GOST_OMAC_SOURCE_FILES}
@@ -213,11 +213,13 @@ set(GOST_ENGINE_SOURCE_FILES
         gost_eng_digest.c
         gost_eng_digest_define.c
         gost_eng_cipher.c
-        gost_cipher_ctx_eng.c
         )
 
-set(GOST_CIPHER_CTX_SOURCE_FILES
-        gost_cipher_ctx.c)
+set(GOST_CIPHER_CTX_INTERNAL_SOURCE_FILES
+        gost_cipher_ctx_internal_impl.c)
+
+set(GOST_CIPHER_CTX_EVP_SOURCE_FILES
+        gost_cipher_ctx_evp_impl.c)
 
 set(GOST_PROV_SOURCE_FILES
         gost_prov.c
@@ -232,6 +234,7 @@ set(GOST_PROV_SOURCE_FILES
         gost_prov_keyexch.c
         gost_prov_tls.c
         gost_prov_tls.h
+        gost_cipher_ctx_prov.c
         )
 
 set(TEST_ENVIRONMENT_COMMON
@@ -276,13 +279,13 @@ set_tests_properties(ciphers-with-provider
 # test_curves is an internals testing program, it doesn't need a test env
 
 add_executable(test_ecdhe test_ecdhe.c)
-target_link_libraries(test_ecdhe gost_core gost_err gost_cipher_ctx)
+target_link_libraries(test_ecdhe gost_core gost_err)
 add_test(NAME ecdhe COMMAND test_ecdhe)
 set_tests_properties(ecdhe
   PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_ENGINE}")
 
 add_executable(test_curves test_curves.c)
-target_link_libraries(test_curves gost_core gost_err gost_cipher_ctx)
+target_link_libraries(test_curves gost_core gost_err)
 add_test(NAME curves COMMAND test_curves)
 
 add_executable(test_params test_params.c)
@@ -376,7 +379,7 @@ endif()
 
 if(NOT MSVC)
   add_executable(sign benchmark/sign.c)
-  target_link_libraries(sign gost_core gost_err ${CLOCK_GETTIME_LIB} gost_cipher_ctx)
+  target_link_libraries(sign gost_core gost_err ${CLOCK_GETTIME_LIB})
 endif()
 
 # All that may need to load just built engine will have path to it defined.
@@ -413,17 +416,21 @@ add_library(gosttls12additional STATIC ${GOST_TLS12_ADDITIONAL_SOURCE_FILES})
 set_target_properties(gosttls12additional PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gosttls12additional PRIVATE OpenSSL::Crypto gost_err)
 
-add_library(gost_core STATIC ${GOST_LIB_SOURCE_FILES})
+add_library(gost_common_core STATIC ${GOST_COMMON_CORE_SOURCE_FILES})
+set_target_properties(gost_common_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(gost_common_core PRIVATE OpenSSL::Crypto gost89 gosthash gosthash2012 gosttls12additional)
+
+add_library(gost_core STATIC ${GOST_CIPHER_CTX_INTERNAL_SOURCE_FILES})
 set_target_properties(gost_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(gost_core PRIVATE OpenSSL::Crypto gost89 gosthash gosthash2012 gosttls12additional)
+target_link_libraries(gost_core PRIVATE gost_common_core)
+
+add_library(gost_engine_core STATIC ${GOST_CIPHER_CTX_EVP_SOURCE_FILES})
+set_target_properties(gost_engine_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
+target_link_libraries(gost_engine_core PRIVATE gost_common_core)
 
 add_library(gost_err STATIC ${GOST_ERR_SOURCE_FILES})
 set_target_properties(gost_err PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gost_err PRIVATE OpenSSL::Crypto)
-
-add_library(gost_cipher_ctx STATIC ${GOST_CIPHER_CTX_SOURCE_FILES})
-set_target_properties(gost_cipher_ctx PROPERTIES POSITION_INDEPENDENT_CODE ON)
-target_link_libraries(gost_cipher_ctx PRIVATE OpenSSL::Crypto)
 
 # The GOST engine in module form
 add_library(gost_engine MODULE ${GOST_ENGINE_SOURCE_FILES})
@@ -431,7 +438,7 @@ add_library(gost_engine MODULE ${GOST_ENGINE_SOURCE_FILES})
 # module suffix should be
 set_target_properties(gost_engine PROPERTIES
   PREFIX "" OUTPUT_NAME "gost" SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
-target_link_libraries(gost_engine PRIVATE gost_core gost_err)
+target_link_libraries(gost_engine PRIVATE gost_engine_core gost_err)
 
 if (NOT MSVC)
 # The GOST engine in library form
@@ -440,7 +447,7 @@ set_target_properties(lib_gost_engine PROPERTIES
   COMPILE_DEFINITIONS "BUILDING_ENGINE_AS_LIBRARY"
   PUBLIC_HEADER gost-engine.h
   OUTPUT_NAME "gost")
-target_link_libraries(lib_gost_engine PRIVATE gost_core gost_err)
+target_link_libraries(lib_gost_engine PRIVATE gost_engine_core gost_err)
 endif()
 
 # The GOST provider uses this
@@ -454,7 +461,7 @@ set_target_properties(gost_prov PROPERTIES
   PREFIX "" OUTPUT_NAME "gostprov" SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX}
   COMPILE_DEFINITIONS "BUILDING_GOST_PROVIDER;OPENSSL_NO_DYNAMIC_ENGINE"
   )
-target_link_libraries(gost_prov PRIVATE gost_core libprov gost_cipher_ctx)
+target_link_libraries(gost_prov PRIVATE gost_core libprov)
 
 if (NOT MSVC)
 # The GOST provider in library form
@@ -465,7 +472,7 @@ set_target_properties(lib_gost_prov PROPERTIES
   OUTPUT_NAME "gostprov"
   COMPILE_DEFINITIONS "BUILDING_GOST_PROVIDER;BUILDING_PROVIDER_AS_LIBRARY;OPENSSL_NO_DYNAMIC_ENGINE"
   )
-target_link_libraries(lib_gost_prov PRIVATE gost_core libprov gost_cipher_ctx)
+target_link_libraries(lib_gost_prov PRIVATE gost_core libprov)
 endif()
 
 set(GOST_SUM_SOURCE_FILES

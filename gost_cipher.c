@@ -1,4 +1,5 @@
 #include "gost_cipher.h"
+#include "gost_cipher_ctx.h"
 
 #define TPL(st, field) (((st)->field) ? ((st)->field) : TPL_VAL(st, field))
 #define TPL_VAL(st, field) ((st)->template ? (st)->template->field : 0)

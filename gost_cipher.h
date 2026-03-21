@@ -1,6 +1,9 @@
 #pragma once
 
-#include "gost_cipher_ctx.h"
+#include <stddef.h>
+#include <openssl/types.h>
+
+struct gost_cipher_ctx_st;
 
 /* Struct describing cipher and used for init/deinit.*/
 struct gost_cipher_st {
