@@ -279,7 +279,7 @@ set_tests_properties(ciphers-with-provider
 # test_curves is an internals testing program, it doesn't need a test env
 
 add_executable(test_ecdhe test_ecdhe.c)
-target_link_libraries(test_ecdhe gost_core gost_err)
+target_link_libraries(test_ecdhe gost_common_core gost_core gost_err)
 add_test(NAME ecdhe COMMAND test_ecdhe)
 set_tests_properties(ecdhe
   PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_ENGINE}")
