@@ -26,8 +26,7 @@
 OSSL_CIPHER_PARAM_TLSTREE definition in OpenSSL is expected.")
 # else
 #  warning "Gost-engine is built against not fully supported version of OpenSSL. \
-OSSL_CIPHER_PARAM_TLSTREE definition in OpenSSL is expected. TLSTREE is not supported by \
-the provider for cipher operations."
+OSSL_CIPHER_PARAM_TLSTREE definition in OpenSSL is expected."
 # endif
 # define OSSL_CIPHER_PARAM_TLSTREE "tlstree"
 #endif
@@ -38,8 +37,7 @@ the provider for cipher operations."
 OSSL_CIPHER_PARAM_TLSTREE_MODE definition in OpenSSL is expected.")
 # else
 #  warning "Gost-engine is built against not fully supported version of OpenSSL. \
-OSSL_CIPHER_PARAM_TLSTREE_MODE definition in OpenSSL is expected. TLSTREE modes are not supported by \
-the provider for encryption/decryption operations. ."
+OSSL_CIPHER_PARAM_TLSTREE_MODE definition in OpenSSL is expected."
 # endif
 # define OSSL_CIPHER_PARAM_TLSTREE_MODE "tlstree_mode"
 #endif
@@ -53,7 +51,9 @@ the provider for encryption/decryption operations. ."
 static OSSL_FUNC_cipher_dupctx_fn cipher_dupctx;
 static OSSL_FUNC_cipher_freectx_fn cipher_freectx;
 static OSSL_FUNC_cipher_get_ctx_params_fn cipher_get_ctx_params;
+static OSSL_FUNC_cipher_gettable_ctx_params_fn cipher_gettable_ctx_params;
 static OSSL_FUNC_cipher_set_ctx_params_fn cipher_set_ctx_params;
+static OSSL_FUNC_cipher_settable_ctx_params_fn cipher_settable_ctx_params;
 static OSSL_FUNC_cipher_encrypt_init_fn cipher_encrypt_init;
 static OSSL_FUNC_cipher_decrypt_init_fn cipher_decrypt_init;
 static OSSL_FUNC_cipher_update_fn cipher_update;
@@ -128,6 +128,34 @@ static int cipher_get_params(const GOST_cipher *c, OSSL_PARAM params[])
     return 1;
 }
 
+static const OSSL_PARAM cipher_known_gettable_ctx_params[] = {
+    OSSL_PARAM_size_t(OSSL_CIPHER_PARAM_KEYLEN, NULL),
+    OSSL_PARAM_octet_string(OSSL_CIPHER_PARAM_IV, NULL, 0),
+    OSSL_PARAM_octet_string(OSSL_CIPHER_PARAM_UPDATED_IV, NULL, 0),
+    OSSL_PARAM_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, NULL, 0),
+    OSSL_PARAM_END
+};
+
+static const OSSL_PARAM cipher_known_settable_ctx_params[] = {
+    OSSL_PARAM_uint("padding", NULL),
+    OSSL_PARAM_size_t("key-mesh", NULL),
+    OSSL_PARAM_octet_string(OSSL_CIPHER_PARAM_AEAD_TAG, NULL, 0),
+    OSSL_PARAM_size_t(OSSL_CIPHER_PARAM_IVLEN, NULL),
+    OSSL_PARAM_octet_string(OSSL_CIPHER_PARAM_TLSTREE, NULL, 0),
+    OSSL_PARAM_octet_string(OSSL_CIPHER_PARAM_TLSTREE_MODE, NULL, 0),
+    OSSL_PARAM_END
+};
+
+static const OSSL_PARAM *cipher_gettable_ctx_params(void *cctx, void *provctx)
+{
+    return cipher_known_gettable_ctx_params;
+}
+
+static const OSSL_PARAM *cipher_settable_ctx_params(void *cctx, void *provctx)
+{
+    return cipher_known_settable_ctx_params;
+}
+
 static int cipher_get_ctx_params(void *vgctx, OSSL_PARAM params[])
 {
     GOST_CTX *gctx = vgctx;
@@ -155,6 +183,16 @@ static int cipher_get_ctx_params(void *vgctx, OSSL_PARAM params[])
                 GOST_cipher_ctx_iv(gctx->cctx),
                 (size_t)GOST_cipher_ctx_iv_length(gctx->cctx))) {
         return 0;
+    }
+    if ((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_AEAD_TAG)) != NULL) {
+        int taglen = GOST_cipher_ctx_iv_length(gctx->cctx);
+        unsigned char tag[EVP_MAX_BLOCK_LENGTH];
+
+        if (taglen <= 0 || taglen > (int)sizeof(tag)
+            || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_AEAD_GET_TAG,
+                                    taglen, tag) <= 0
+            || !OSSL_PARAM_set_octet_string(p, tag, (size_t)taglen))
+            return 0;
     }
     return 1;
 }
@@ -204,6 +242,7 @@ static int cipher_set_ctx_params(void *vgctx, const OSSL_PARAM params[])
     if ((p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_TLSTREE_MODE)) != NULL) {
         const void *val = NULL;
         size_t arg = 0;
+
         if (!OSSL_PARAM_get_octet_string_ptr(p, &val, &arg)
             || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_SET_TLSTREE_PARAMS,
                                     (int)arg, (void *)val) <= 0)
@@ -219,11 +258,12 @@ static int cipher_encrypt_init(void *vgctx,
 {
     GOST_CTX *gctx = vgctx;
 
-    if (!cipher_set_ctx_params(vgctx, params)
-        || keylen > (size_t)GOST_cipher_key_length(gctx->descriptor)
-        || ivlen > (size_t)GOST_cipher_iv_length(gctx->descriptor))
+    if (keylen > (size_t)GOST_cipher_key_length(gctx->descriptor)
+        || ivlen > (size_t)GOST_cipher_iv_length(gctx->descriptor)
+        || !cipher_set_ctx_params(vgctx, params)
+        || !GOST_CipherInit_ex(gctx->cctx, gctx->descriptor, key, iv, 1))
         return 0;
-    return GOST_CipherInit_ex(gctx->cctx, gctx->descriptor, key, iv, 1);
+    return 1;
 }
 
 static int cipher_decrypt_init(void *vgctx,
@@ -233,11 +273,12 @@ static int cipher_decrypt_init(void *vgctx,
 {
     GOST_CTX *gctx = vgctx;
 
-    if (!cipher_set_ctx_params(vgctx, params)
-        || keylen > (size_t)GOST_cipher_key_length(gctx->descriptor)
-        || ivlen > (size_t)GOST_cipher_iv_length(gctx->descriptor))
+    if (keylen > (size_t)GOST_cipher_key_length(gctx->descriptor)
+        || ivlen > (size_t)GOST_cipher_iv_length(gctx->descriptor)
+        || !cipher_set_ctx_params(vgctx, params)
+        || !GOST_CipherInit_ex(gctx->cctx, gctx->descriptor, key, iv, 0))
         return 0;
-    return GOST_CipherInit_ex(gctx->cctx, gctx->descriptor, key, iv, 0);
+    return 1;
 }
 
 static int cipher_update(void *vgctx,
@@ -245,15 +286,12 @@ static int cipher_update(void *vgctx,
                          const unsigned char *in, size_t inl)
 {
     GOST_CTX *gctx = vgctx;
-    int int_outl = 0;
+    int int_outl = outl != NULL ? *outl : 0;
+    int res = GOST_CipherUpdate(gctx->cctx, out, &int_outl, in, (int)inl);
 
-    if (out == NULL && outsize != 0)
-        return 0;
-    if (!GOST_CipherUpdate(gctx->cctx, out, &int_outl, in, (int)inl))
-        return 0;
-    if (outl != NULL)
+    if (res > 0 && outl != NULL)
         *outl = (size_t)int_outl;
-    return 1;
+    return res > 0;
 }
 
 static int cipher_final(void *vgctx,
@@ -288,7 +326,11 @@ typedef void (*fptr_t)(void);
         { OSSL_FUNC_CIPHER_DUPCTX, (fptr_t)cipher_dupctx },             \
         { OSSL_FUNC_CIPHER_FREECTX, (fptr_t)cipher_freectx },           \
         { OSSL_FUNC_CIPHER_GET_CTX_PARAMS, (fptr_t)cipher_get_ctx_params }, \
+        { OSSL_FUNC_CIPHER_GETTABLE_CTX_PARAMS,                          \
+          (fptr_t)cipher_gettable_ctx_params },                          \
         { OSSL_FUNC_CIPHER_SET_CTX_PARAMS, (fptr_t)cipher_set_ctx_params }, \
+        { OSSL_FUNC_CIPHER_SETTABLE_CTX_PARAMS,                          \
+          (fptr_t)cipher_settable_ctx_params },                          \
         { OSSL_FUNC_CIPHER_ENCRYPT_INIT, (fptr_t)cipher_encrypt_init }, \
         { OSSL_FUNC_CIPHER_DECRYPT_INIT, (fptr_t)cipher_decrypt_init }, \
         { OSSL_FUNC_CIPHER_UPDATE, (fptr_t)cipher_update },             \
@@ -347,4 +389,6 @@ const OSSL_ALGORITHM GOST_prov_ciphers[] = {
 };
 
 void GOST_prov_deinit_ciphers(void) {
+    GOST_cipher_deinit(&magma_mgm_cipher);
+    GOST_cipher_deinit(&grasshopper_mgm_cipher);
 }

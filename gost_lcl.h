@@ -381,18 +381,6 @@ extern GOST_digest grasshopper_ctracpkm_mac;
 extern GOST_digest magma_ctracpkm_mac;
 
 
-/* job to initialize a missing NID */
-struct gost_nid_job {
-    const char *sn;
-    const char *ln;
-    void (*callback)(int nid);
-    ASN1_OBJECT *asn1;
-};
-
-typedef struct gost_nid_job GOST_NID_JOB;
-
-extern GOST_NID_JOB magma_mgm_NID;
-extern GOST_NID_JOB kuznyechik_mgm_NID;
 
 #endif
 /* vim: set expandtab cinoptions=\:0,l1,t0,g0,(0 sw=4 : */

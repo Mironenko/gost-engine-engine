@@ -99,6 +99,8 @@ static int gost_grasshopper_cipher_do_mgm(GOST_cipher_ctx* ctx, unsigned char* o
 static int gost_grasshopper_cipher_cleanup(GOST_cipher_ctx* ctx);
 
 static int gost_grasshopper_mgm_cleanup(GOST_cipher_ctx *c);
+static int grasshopper_mgm_static_init(GOST_cipher *c);
+static int grasshopper_mgm_static_deinit(GOST_cipher *c);
 
 static int gost_grasshopper_set_asn1_parameters(GOST_cipher_ctx* ctx, ASN1_TYPE* params);
 

@@ -90,6 +90,7 @@ void GOST_eng_cipher_deinit(GOST_eng_cipher *c)
 {
     EVP_CIPHER_meth_free(c->evp_cipher);
     c->evp_cipher = NULL;
+    GOST_cipher_deinit(c->cipher);
 }
 
 int GOST_eng_cipher_nid(const GOST_eng_cipher *c)

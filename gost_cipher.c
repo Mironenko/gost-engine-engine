@@ -30,7 +30,65 @@ int GOST_cipher_init(GOST_cipher *c)
         c->get_asn1_parameters = TPL_VAL(c, get_asn1_parameters);
     if (c->ctrl == NULL)
         c->ctrl = TPL_VAL(c, ctrl);
+    if (c->static_init == NULL)
+        c->static_init = TPL_VAL(c, static_init);
+    if (c->static_deinit == NULL)
+        c->static_deinit = TPL_VAL(c, static_deinit);
 
+    if (c->static_init != NULL)
+        return c->static_init(c);
+
+    return 1;
+}
+
+int GOST_cipher_deinit(GOST_cipher *c)
+{
+    if (c == NULL)
+        return 0;
+    if (c->static_deinit != NULL)
+        return c->static_deinit(c);
+    return 1;
+}
+
+int GOST_cipher_create_nid(GOST_cipher *c, const char *sn, const char *ln)
+{
+    int nid;
+    ASN1_OBJECT *obj;
+
+    if (c == NULL || sn == NULL || ln == NULL)
+        return 0;
+
+    if (c->nid != NID_undef)
+        return 1;
+
+    nid = OBJ_sn2nid(sn);
+    if (nid != NID_undef) {
+        c->nid = nid;
+        return 1;
+    }
+
+    nid = OBJ_new_nid(1);
+    obj = ASN1_OBJECT_create(nid, NULL, 0, sn, ln);
+    if (obj == NULL || OBJ_add_object(obj) == NID_undef) {
+        ASN1_OBJECT_free(obj);
+        return 0;
+    }
+
+    c->nid = nid;
+    c->data = obj;
+    return 1;
+}
+
+int GOST_cipher_free_nid(GOST_cipher *c)
+{
+    if (c == NULL)
+        return 0;
+
+    if (c->data != NULL) {
+        ASN1_OBJECT_free(c->data);
+        c->data = NULL;
+    }
+    c->nid = NID_undef;
     return 1;
 }
 

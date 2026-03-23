@@ -343,17 +343,17 @@ add_executable(test_gosthash2012 test_gosthash2012.c)
 target_link_libraries(test_gosthash2012 gosthash2012)
 add_test(NAME gosthash2012 COMMAND test_gosthash2012)
 
-if(TLS13_PATCHED_OPENSSL)
-  add_executable(test_mgm test_mgm.c)
-  target_link_libraries(test_mgm OpenSSL::Crypto)
-  add_test(NAME mgm-with-engine COMMAND test_mgm)
-  set_tests_properties(mgm-with-engine
+add_executable(test_mgm test_mgm.c)
+target_link_libraries(test_mgm OpenSSL::Crypto)
+add_test(NAME mgm-with-engine COMMAND test_mgm)
+set_tests_properties(mgm-with-engine
     PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_ENGINE}")
-  add_test(NAME mgm-with-provider COMMAND test_mgm)
-  set_tests_properties(mgm-with-provider
+add_test(NAME mgm-with-provider COMMAND test_mgm)
+set_tests_properties(mgm-with-provider
     PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_PROVIDER}")
-  set_property(TARGET test_mgm APPEND PROPERTY COMPILE_DEFINITIONS ENGINE_DIR="${OUTPUT_DIRECTORY}")
+set_property(TARGET test_mgm APPEND PROPERTY COMPILE_DEFINITIONS ENGINE_DIR="${OUTPUT_DIRECTORY}")
 
+if(TLS13_PATCHED_OPENSSL)
   add_executable(test_tls13handshake test_tls13handshake.c)
   target_link_libraries(test_tls13handshake OpenSSL::Crypto OpenSSL::SSL)
   add_test(NAME test-tls13handshake-with-provider COMMAND test_tls13handshake)

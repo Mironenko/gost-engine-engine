@@ -301,8 +301,6 @@ static int gost_engine_finish(ENGINE* e) {
     return 1;
 }
 
-static void free_NIDs();
-
 static int gost_engine_destroy(ENGINE* e) {
     int i;
 
@@ -320,7 +318,6 @@ static int gost_engine_destroy(ENGINE* e) {
     }
 
     free_cached_groups();
-    free_NIDs();
 
 # ifndef BUILDING_GOST_PROVIDER
     ERR_unload_GOST_strings();
@@ -333,57 +330,6 @@ static int gost_engine_destroy(ENGINE* e) {
  * Following is the glue that populates the ENGINE structure and that
  * binds it to OpenSSL libraries
  */
-static GOST_NID_JOB *missing_NIDs[] = {
-    &kuznyechik_mgm_NID,
-    &magma_mgm_NID,
-};
-
-static int create_new_nid_for_gost_nid_job(GOST_NID_JOB *job) {
-    int nid = OBJ_new_nid(1);
-    ASN1_OBJECT *obj =
-        ASN1_OBJECT_create(nid, NULL, 0, job->sn, job->ln);
-
-    if (!obj || OBJ_add_object(obj) == NID_undef) {
-        OPENSSL_free(obj);
-        return 0;
-    }
-
-    job->asn1 = obj;
-    job->callback(nid);
-
-    return 1;
-}
-
-static int create_NIDs() {
-    int i, nid;
-
-    for (i = 0; i < OSSL_NELEM(missing_NIDs); i++) {
-        GOST_NID_JOB *job = missing_NIDs[i];
-
-        nid = OBJ_sn2nid(job->sn);
-        if (nid != NID_undef) {
-            job->callback(nid);
-            continue;
-        }
-
-        if (!create_new_nid_for_gost_nid_job(job)) {
-            return 0;
-        }
-    }
-    return 1;
-}
-
-static void free_NIDs(void) {
-    int i;
-
-    for (i = 0; i < OSSL_NELEM(missing_NIDs); i++) {
-        GOST_NID_JOB *job = missing_NIDs[i];
-        if (job->asn1) {
-            ASN1_OBJECT_free(job->asn1);
-            job->asn1 = NULL;
-        }
-    }
-}
 
 # ifndef BUILDING_GOST_PROVIDER
 static
@@ -399,10 +345,6 @@ int populate_gost_engine(ENGINE* e) {
     }
     if (!ENGINE_set_name(e, engine_gost_name)) {
         fprintf(stderr, "ENGINE_set_name failed\n");
-        goto end;
-    }
-    if (!create_NIDs()) {
-        fprintf(stderr, "NID creation failed\n");
         goto end;
     }
     if (!ENGINE_set_digests(e, gost_digests)) {

@@ -138,19 +138,20 @@ GOST_cipher grasshopper_mgm_cipher = {
     .ctrl = gost_grasshopper_mgm_ctrl,
     .init = gost_grasshopper_cipher_init_mgm,
     .do_cipher = gost_grasshopper_cipher_do_mgm,
-    .ctx_size = sizeof(gost_mgm_ctx)
+    .ctx_size = sizeof(gost_mgm_ctx),
+    .static_init = grasshopper_mgm_static_init,
+    .static_deinit = grasshopper_mgm_static_deinit,
 };
 
-static void kuznyechik_NID_callback (int nid)
+static int grasshopper_mgm_static_init(GOST_cipher *c)
 {
-    grasshopper_mgm_cipher.nid = nid;
+    return GOST_cipher_create_nid(c, SN_kuznyechik_mgm, SN_kuznyechik_mgm);
 }
 
-GOST_NID_JOB kuznyechik_mgm_NID = {
-    .sn = SN_kuznyechik_mgm,
-    .ln = SN_kuznyechik_mgm,
-    .callback = kuznyechik_NID_callback,
-};
+static int grasshopper_mgm_static_deinit(GOST_cipher *c)
+{
+    return GOST_cipher_free_nid(c);
+}
 
 /* first 256 bit of D from draft-irtf-cfrg-re-keying-12 */
 static const unsigned char ACPKM_D_2018[] = {

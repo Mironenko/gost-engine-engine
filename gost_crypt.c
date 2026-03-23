@@ -190,6 +190,16 @@ GOST_cipher magma_ecb_cipher = {
     .do_cipher = magma_cipher_do_ecb,
 };
 
+static int magma_mgm_static_init(GOST_cipher *c)
+{
+    return GOST_cipher_create_nid(c, SN_magma_mgm, SN_magma_mgm);
+}
+
+static int magma_mgm_static_deinit(GOST_cipher *c)
+{
+    return GOST_cipher_free_nid(c);
+}
+
 GOST_cipher magma_mgm_cipher = {
     .nid = NID_undef,
     .template = &magma_template_cipher,
@@ -202,18 +212,9 @@ GOST_cipher magma_mgm_cipher = {
     .do_cipher = gost_magma_cipher_do_mgm,
     .ctrl = gost_magma_mgm_ctrl,
     .cleanup = gost_magma_mgm_cleanup,
-    .ctx_size = sizeof(gost_mgm_ctx)
-};
-
-static void magma_NID_callback (int nid)
-{
-    magma_mgm_cipher.nid = nid;
-}
-
-GOST_NID_JOB magma_mgm_NID = {
-    .sn = SN_magma_mgm,
-    .ln = SN_magma_mgm,
-    .callback = magma_NID_callback,
+    .ctx_size = sizeof(gost_mgm_ctx),
+    .static_init = magma_mgm_static_init,
+    .static_deinit = magma_mgm_static_deinit,
 };
 
 GOST_cipher magma_cbc_cipher = {

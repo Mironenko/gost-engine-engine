@@ -9,6 +9,7 @@ struct gost_cipher_ctx_st;
 struct gost_cipher_st {
     struct gost_cipher_st *template; /* template struct */
     int nid;
+    void *data;
     int block_size;     /* (bytes) */
     int key_len;        /* (bytes) */
     int iv_len;
@@ -22,11 +23,16 @@ struct gost_cipher_st {
     int (*set_asn1_parameters)(struct gost_cipher_ctx_st *, ASN1_TYPE *);
     int (*get_asn1_parameters)(struct gost_cipher_ctx_st *, ASN1_TYPE *);
     int (*ctrl)(struct gost_cipher_ctx_st *, int type, int arg, void *ptr);
+    int (*static_init)(struct gost_cipher_st *);
+    int (*static_deinit)(struct gost_cipher_st *);
 };
 
 typedef struct gost_cipher_st GOST_cipher;
 
 int GOST_cipher_init(GOST_cipher *c);
+int GOST_cipher_deinit(GOST_cipher *c);
+int GOST_cipher_create_nid(GOST_cipher *c, const char *sn, const char *ln);
+int GOST_cipher_free_nid(GOST_cipher *c);
 int GOST_cipher_type(const GOST_cipher *c);
 int GOST_cipher_nid(const GOST_cipher *c);
 int GOST_cipher_flags(const GOST_cipher *c);
