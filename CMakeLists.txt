@@ -438,7 +438,7 @@ add_library(gost_engine MODULE ${GOST_ENGINE_SOURCE_FILES})
 # module suffix should be
 set_target_properties(gost_engine PROPERTIES
   PREFIX "" OUTPUT_NAME "gost" SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX})
-target_link_libraries(gost_engine PRIVATE gost_engine_core gost_err)
+target_link_libraries(gost_engine PRIVATE gost_common_core gost_engine_core gost_err)
 
 if (NOT MSVC)
 # The GOST engine in library form
@@ -447,7 +447,7 @@ set_target_properties(lib_gost_engine PROPERTIES
   COMPILE_DEFINITIONS "BUILDING_ENGINE_AS_LIBRARY"
   PUBLIC_HEADER gost-engine.h
   OUTPUT_NAME "gost")
-target_link_libraries(lib_gost_engine PRIVATE gost_engine_core gost_err)
+target_link_libraries(lib_gost_engine PRIVATE gost_common_core gost_engine_core gost_err)
 endif()
 
 # The GOST provider uses this
