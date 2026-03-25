@@ -16,8 +16,10 @@
 #include <openssl/obj_mac.h>
 #include "e_gost_err.h"
 #include "gost_lcl.h"
+#include "gost_eng_lcl.h"
 #include "gost-engine.h"
 #include "gost_eng_md.h"
+#include "gost_eng_crypt.h"
 #include "gost_eng_ameth.h"
 #include "gost_eng_pmeth.h"
 #include "gost_eng_ctl.h"

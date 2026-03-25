@@ -302,9 +302,6 @@ struct gost_cipher_st {
 };
 typedef struct gost_cipher_st GOST_cipher;
 
-EVP_CIPHER *GOST_init_cipher(GOST_cipher *c);
-void GOST_deinit_cipher(GOST_cipher *c);
-
 const EVP_CIPHER *cipher_gost_magma_ctracpkm();
 
 /* ENGINE implementation data */
@@ -382,18 +379,6 @@ int internal_compute_ecdh(unsigned char *out, size_t *out_len,
 int internal_print_gost_priv(BIO *out, const EC_KEY *ec, int indent, int pkey_nid);
 int internal_print_gost_ec_pub(BIO *out, const EC_KEY *ec, int indent, int pkey_nid);
 int internal_print_gost_ec_param(BIO *out, const EC_KEY *ec, int indent);
-
-/* ENGINE implementation data */
-extern GOST_digest GostR3411_94_digest_legacy;
-extern GOST_digest Gost28147_89_MAC_digest_legacy;
-extern GOST_digest Gost28147_89_mac_12_digest_legacy;
-extern GOST_digest GostR3411_2012_256_digest_legacy;
-extern GOST_digest GostR3411_2012_512_digest_legacy;
-extern GOST_digest magma_mac_digest;
-extern GOST_digest grasshopper_mac_digest;
-extern GOST_digest kuznyechik_ctracpkm_omac_digest;
-extern GOST_digest magma_ctracpkm_omac_digest;
-
 
 /* job to initialize a missing NID */
 struct gost_nid_job {

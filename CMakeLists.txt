@@ -229,6 +229,7 @@ set(GOST_ENGINE_SOURCE_FILES
         gost_eng_pmeth.c
         gost_eng_ameth.c
         gost_eng_ctl.c
+        gost_eng_crypt.c
         )
 
 set(GOST_PROV_SOURCE_FILES
