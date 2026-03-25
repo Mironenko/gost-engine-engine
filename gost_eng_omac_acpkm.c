@@ -13,6 +13,7 @@
 
 #include "e_gost_err.h"
 #include "gost_lcl.h"
+#include "gost_eng_lcl.h"
 #include "gost_cmac_acpkm.h"
 #include "gost_grasshopper_defines.h"
 
