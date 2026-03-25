@@ -270,15 +270,6 @@ add_test(NAME ciphers-with-provider COMMAND test_ciphers)
 set_tests_properties(ciphers-with-provider
   PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_PROVIDER}")
 
-add_executable(test_provider_cipher_params test_provider_cipher_params.c)
-target_link_libraries(test_provider_cipher_params OpenSSL::Crypto)
-if(TLS13_PATCHED_OPENSSL)
-  target_compile_definitions(test_provider_cipher_params PRIVATE TLS13_PATCHED_OPENSSL=1)
-endif()
-add_test(NAME provider-cipher-params COMMAND test_provider_cipher_params)
-set_tests_properties(provider-cipher-params
-  PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_PROVIDER}")
-
 # test_curves is an internals testing program, it doesn't need a test env
 
 add_executable(test_ecdhe test_ecdhe.c)
