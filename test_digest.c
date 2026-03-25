@@ -535,17 +535,22 @@ static const struct hash_testvec testvecs[] = {
     { 0 }
 };
 
-int engine_is_available(const char *name);
+#if GOST_ENABLE_LEGACY
+    int engine_is_available(const char *name);
+#endif
 
 int warn_md_impl_is_expected(EVP_MD* md) {
     if (OSSL_PROVIDER_available(NULL, "gostprov") && !EVP_MD_get0_provider(md)) {
         printf(cRED "Non-provided md during provider test" cNORM "\n");
         return 1;
     }
+
+#if GOST_ENABLE_LEGACY
     if (engine_is_available("gost") && EVP_MD_get0_provider(md)) {
         printf(cRED "Provided md during engine test" cNORM "\n");
         return 1;
     }
+#endif
 
     return 0;
 }
@@ -555,10 +560,13 @@ int warn_mac_impl_is_expected(EVP_MAC* md) {
         printf(cRED "Non-provided mac during provider test" cNORM "\n");
         return 1;
     }
-    if (engine_is_available("gost") && EVP_MAC_get0_provider(md)) {
-        printf(cRED "Provided mac during engine test" cNORM "\n");
-        return 1;
-    }
+
+#if GOST_ENABLE_LEGACY
+   if (engine_is_available("gost") && EVP_MAC_get0_provider(md)) {
+       printf(cRED "Provided mac during engine test" cNORM "\n");
+       return 1;
+   }
+#endif
 
     return 0;
 }
@@ -976,6 +984,7 @@ static int do_synthetic_test(const struct hash_testvec *tv)
     return 0;
 }
 
+#if GOST_ENABLE_LEGACY
 int engine_is_available(const char *name)
 {
     ENGINE *e = ENGINE_get_first();
@@ -988,6 +997,7 @@ int engine_is_available(const char *name)
     ENGINE_free(e);
     return e != NULL;
 }
+#endif
 
 void warn_if_untested(const EVP_MD *dgst, void *provider)
 {
@@ -1006,12 +1016,13 @@ void warn_if_untested(const EVP_MD *dgst, void *provider)
 
 void warn_all_untested(void)
 {
+#if GOST_ENABLE_LEGACY
     if (engine_is_available("gost")) {
         ENGINE *eng;
-
+    
         T(eng = ENGINE_by_id("gost"));
         T(ENGINE_init(eng));
-
+    
         ENGINE_DIGESTS_PTR fn_c;
         T(fn_c = ENGINE_get_digests(eng));
         const int *nids;
@@ -1022,6 +1033,7 @@ void warn_all_untested(void)
         ENGINE_finish(eng);
         ENGINE_free(eng);
     }
+#endif
     if (OSSL_PROVIDER_available(NULL, "gostprov")) {
         OSSL_PROVIDER *prov;
 

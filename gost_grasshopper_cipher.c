@@ -19,6 +19,10 @@
 #include "gost_tls12_additional.h"
 #include "e_gost_err.h"
 
+#if GOST_ENABLE_LEGACY
+    #include "gost_eng_crypt.h"
+#endif
+
 enum GRASSHOPPER_CIPHER_TYPE {
     GRASSHOPPER_CIPHER_ECB = 0,
     GRASSHOPPER_CIPHER_CBC,
@@ -1258,6 +1262,10 @@ static int gost_grasshopper_cipher_ctl(EVP_CIPHER_CTX *ctx, int type, int arg, v
 /* Called directly by CMAC_ACPKM_Init() */
 const EVP_CIPHER *cipher_gost_grasshopper_ctracpkm()
 {
+#if GOST_ENABLE_LEGACY
     return GOST_init_cipher(&grasshopper_ctr_acpkm_cipher);
+#else
+    return NULL;
+#endif
 }
 /* vim: set expandtab cinoptions=\:0,l1,t0,g0,(0 sw=4 : */

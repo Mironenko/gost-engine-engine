@@ -14,6 +14,10 @@
 #include "gost_prov.h"
 #include "gost_lcl.h"
 
+#if GOST_ENABLE_LEGACY
+    #include "gost_eng_crypt.h"
+#endif
+
 /*
  * This definitions are added in the patch to OpenSSL 3.4.2 version to support
  * GOST TLS 1.3. Definitions below must be removed when the patch is added to
@@ -102,7 +106,10 @@ static GOST_CTX *cipher_newctx(void *provctx, GOST_cipher *descriptor,
         gctx->provctx = provctx;
         gctx->known_params = known_params;
         gctx->descriptor = descriptor;
+        
+#if GOST_ENABLE_LEGACY
         gctx->cipher = GOST_init_cipher(descriptor);
+#endif
         gctx->cctx = EVP_CIPHER_CTX_new();
 
         if (gctx->cipher == NULL || gctx->cctx == NULL) {
@@ -270,8 +277,11 @@ static int cipher_encrypt_init(void *vgctx,
         || ivlen > EVP_CIPHER_iv_length(gctx->cipher))
         return 0;
 
-    return EVP_CipherInit_ex(gctx->cctx, gctx->cipher, gctx->provctx->e,
-                             key, iv, 1);
+#if GOST_ENABLE_LEGACY
+    return EVP_CipherInit_ex(gctx->cctx, gctx->cipher, gctx->provctx->e, key, iv, 1);
+#else
+    return 1;
+#endif 
 }
 
 static int cipher_decrypt_init(void *vgctx,
@@ -285,8 +295,12 @@ static int cipher_decrypt_init(void *vgctx,
         || keylen > EVP_CIPHER_key_length(gctx->cipher)
         || ivlen > EVP_CIPHER_iv_length(gctx->cipher))
         return 0;
-    return EVP_CipherInit_ex(gctx->cctx, gctx->cipher, gctx->provctx->e,
-                             key, iv, 0) > 0;
+
+#if GOST_ENABLE_LEGACY
+    return EVP_CipherInit_ex(gctx->cctx, gctx->cipher, gctx->provctx->e, key, iv, 0) > 0;
+#else
+    return 1;
+#endif 
 }
 
 static int cipher_update(void *vgctx,
@@ -336,12 +350,21 @@ static const OSSL_PARAM *known_grasshopper_mgm_cipher_params;
  * added suffix "_functions".  Hopefully, that makes it easy to find the
  * actual implementation.
  */
+
+// TODO: CIPHER REFACTORING
+
+#if GOST_ENABLE_LEGACY
+    #define CIPHER_GET_PARAMS_NAME(name) GOST_init_cipher(&name)
+#else
+    #define CIPHER_GET_PARAMS_NAME(name) NULL
+#endif
+
 typedef void (*fptr_t)(void);
 #define MAKE_FUNCTIONS(name)                                            \
     static OSSL_FUNC_cipher_get_params_fn name##_get_params;            \
     static int name##_get_params(OSSL_PARAM *params)                    \
     {                                                                   \
-        return cipher_get_params(GOST_init_cipher(&name), params);      \
+        return cipher_get_params(CIPHER_GET_PARAMS_NAME(name), params); \
     }                                                                   \
     static OSSL_FUNC_cipher_newctx_fn name##_newctx;                    \
     static void *name##_newctx(void *provctx)                           \
@@ -414,6 +437,7 @@ const OSSL_ALGORITHM GOST_prov_ciphers[] = {
 };
 
 void GOST_prov_deinit_ciphers(void) {
+#if GOST_ENABLE_LEGACY
     static GOST_cipher *list[] = {
         &Gost28147_89_cipher,
         &Gost28147_89_cnt_cipher,
@@ -438,4 +462,5 @@ void GOST_prov_deinit_ciphers(void) {
 
     for (i = 0; i < elems(list); i++)
         GOST_deinit_cipher(list[i]);
+#endif
 }

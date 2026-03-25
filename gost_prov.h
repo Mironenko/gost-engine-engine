@@ -54,7 +54,7 @@ struct provider_ctx_st {
     OSSL_LIB_CTX *libctx;
     const OSSL_CORE_HANDLE *core_handle;
     struct proverr_functions_st *proverr_handle;
-
+#if GOST_ENABLE_LEGACY
     /*
      * "internal" GOST engine, which is the implementation that all the
      * provider functions will use to access the crypto functionality.
@@ -63,6 +63,7 @@ struct provider_ctx_st {
      * to do this.
      */
     ENGINE *e;
+#endif
 };
 typedef struct provider_ctx_st PROV_CTX;
 
