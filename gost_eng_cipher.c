@@ -1,3 +1,5 @@
+#include <string.h>
+
 #include <openssl/engine.h>
 #include <openssl/evp.h>
 #include <openssl/objects.h>
@@ -147,16 +149,37 @@ static GOST_cipher *gost_engine_cipher_desc(EVP_CIPHER_CTX *ctx, GOST_cipher_ctx
     return gost_cipher_from_nid(EVP_CIPHER_nid(cipher));
 }
 
+static void gost_engine_cipher_sync(EVP_CIPHER_CTX *ctx, GOST_cipher_ctx *gctx)
+{
+    int iv_len;
+
+    if (ctx == NULL || gctx == NULL)
+        return;
+
+    iv_len = GOST_cipher_ctx_iv_length(gctx);
+    if (iv_len > 0) {
+        memcpy(EVP_CIPHER_CTX_iv_noconst(ctx), GOST_cipher_ctx_iv_noconst(gctx),
+               (size_t)iv_len);
+        memcpy((unsigned char *)EVP_CIPHER_CTX_original_iv(ctx),
+               GOST_cipher_ctx_original_iv(gctx), (size_t)iv_len);
+    }
+    EVP_CIPHER_CTX_set_num(ctx, GOST_cipher_ctx_num(gctx));
+}
+
 int gost_engine_cipher_init(EVP_CIPHER_CTX *ctx, const unsigned char *key,
                             const unsigned char *iv, int enc)
 {
     GOST_cipher_ctx *gctx = gost_engine_cipher_ctx(ctx);
     GOST_cipher *desc = gost_engine_cipher_desc(ctx, gctx);
+    int ret;
 
     if (gctx == NULL || desc == NULL)
         return 0;
 
-    return GOST_CipherInit_ex(gctx, desc, key, iv, enc);
+    ret = GOST_CipherInit_ex(gctx, desc, key, iv, enc);
+    if (ret > 0)
+        gost_engine_cipher_sync(ctx, gctx);
+    return ret;
 }
 
 int gost_engine_cipher_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
@@ -164,6 +187,7 @@ int gost_engine_cipher_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
 {
     GOST_cipher_ctx *gctx = gost_engine_cipher_ctx(ctx);
     const GOST_cipher *desc;
+    int ret;
 
     if (gctx == NULL)
         return 0;
@@ -171,7 +195,10 @@ int gost_engine_cipher_do_cipher(EVP_CIPHER_CTX *ctx, unsigned char *out,
     if (desc == NULL || GOST_cipher_do_cipher_fn(desc) == NULL)
         return 1;
 
-    return GOST_cipher_do_cipher_fn(desc)(gctx, out, in, inl);
+    ret = GOST_cipher_do_cipher_fn(desc)(gctx, out, in, inl);
+    if (ret > 0)
+        gost_engine_cipher_sync(ctx, gctx);
+    return ret;
 }
 
 int gost_engine_cipher_cleanup(EVP_CIPHER_CTX *ctx)
@@ -187,6 +214,7 @@ int gost_engine_cipher_cleanup(EVP_CIPHER_CTX *ctx)
 int gost_engine_cipher_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
 {
     GOST_cipher_ctx *gctx = gost_engine_cipher_ctx(ctx);
+    int ret;
 
     if (gctx == NULL)
         return 0;
@@ -204,7 +232,10 @@ int gost_engine_cipher_ctrl(EVP_CIPHER_CTX *ctx, int type, int arg, void *ptr)
         return GOST_cipher_ctx_copy(out_ctx, gctx);
     }
 
-    return GOST_cipher_ctx_ctrl(gctx, type, arg, ptr);
+    ret = GOST_cipher_ctx_ctrl(gctx, type, arg, ptr);
+    if (ret > 0)
+        gost_engine_cipher_sync(ctx, gctx);
+    return ret;
 }
 
 int gost_engine_cipher_set_asn1_parameters(EVP_CIPHER_CTX *ctx,

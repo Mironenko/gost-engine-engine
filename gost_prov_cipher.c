@@ -58,6 +58,21 @@ static OSSL_FUNC_cipher_decrypt_init_fn cipher_decrypt_init;
 static OSSL_FUNC_cipher_update_fn cipher_update;
 static OSSL_FUNC_cipher_final_fn cipher_final;
 
+static int cipher_get_octet_string_ptr_compat(const OSSL_PARAM *p,
+                                              const void **val, size_t *len)
+{
+    if (p == NULL || val == NULL || len == NULL)
+        return 0;
+    if (OSSL_PARAM_get_octet_string_ptr(p, val, len))
+        return 1;
+    if (p->data == NULL)
+        return 0;
+
+    *val = p->data;
+    *len = p->data_size;
+    return 1;
+}
+
 struct gost_prov_crypt_ctx_st {
     /* Provider context */
     PROV_CTX *provctx;
@@ -222,7 +237,7 @@ static int cipher_set_ctx_params(void *vgctx, const OSSL_PARAM params[])
     if ((p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_TLSTREE)) != NULL) {
         const void *val = NULL;
         size_t arg = 0;
-        if (!OSSL_PARAM_get_octet_string_ptr(p, &val, &arg)
+        if (!cipher_get_octet_string_ptr_compat(p, &val, &arg)
             || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_TLSTREE,
                                     (int)arg, (void *)val) <= 0)
             return 0;
@@ -230,7 +245,7 @@ static int cipher_set_ctx_params(void *vgctx, const OSSL_PARAM params[])
     if ((p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_TLSTREE_MODE)) != NULL) {
         const void *val = NULL;
         size_t arg = 0;
-        if (!OSSL_PARAM_get_octet_string_ptr(p, &val, &arg)
+        if (!cipher_get_octet_string_ptr_compat(p, &val, &arg)
             || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_SET_TLSTREE_PARAMS,
                                     (int)arg, (void *)val) <= 0)
             return 0;

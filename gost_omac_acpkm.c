@@ -14,6 +14,7 @@
 #include "e_gost_err.h"
 #include "gost_lcl.h"
 #include "gost_digest_details.h"
+#include "gost_grasshopper_cipher.h"
 
 #define ACPKM_T_MAX (EVP_MAX_KEY_LENGTH + EVP_MAX_BLOCK_LENGTH)
 
@@ -519,9 +520,30 @@ static int omac_acpkm_imit_ctrl(GOST_digest_ctx *ctx, int type, int arg, void *p
 
                 /* Set parameter T */
                 if (EVP_CIPHER_get0_provider(cipher) == NULL) {
-                    if (!EVP_CIPHER_CTX_ctrl(c->cmac_ctx->actx, EVP_CTRL_KEY_MESH,
-                                             *(int *)ptr, NULL))
+                    GOST_cipher_ctx *cipher_ctx =
+                        EVP_CIPHER_CTX_get_cipher_data(c->cmac_ctx->actx);
+
+                    if (cipher_ctx != NULL
+                        && GOST_cipher_ctx_cipher(cipher_ctx) != NULL) {
+                        void *alg_ctx = GOST_cipher_ctx_get_cipher_data(cipher_ctx);
+                        int cipher_nid = EVP_CIPHER_nid(cipher);
+
+                        if (cipher_nid == NID_magma_ctr_acpkm) {
+                            ((struct ossl_gost_cipher_ctx *)alg_ctx)->key_meshing =
+                                *(int *)ptr;
+                        } else if (cipher_nid == NID_kuznyechik_ctr_acpkm) {
+                            ((gost_grasshopper_cipher_ctx_ctr *)alg_ctx)->section_size =
+                                (unsigned int)*(int *)ptr;
+                        } else if (GOST_cipher_ctx_ctrl(cipher_ctx,
+                                                         EVP_CTRL_KEY_MESH,
+                                                         *(int *)ptr, NULL) <= 0) {
+                            return 0;
+                        }
+                    } else if (!EVP_CIPHER_CTX_ctrl(c->cmac_ctx->actx,
+                                                    EVP_CTRL_KEY_MESH,
+                                                    *(int *)ptr, NULL)) {
                         return 0;
+                    }
                 } else {
                     size_t cipher_key_mesh = (size_t)*(int *)ptr;
                     OSSL_PARAM params[] = { OSSL_PARAM_END, OSSL_PARAM_END };
