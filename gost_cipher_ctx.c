@@ -295,10 +295,6 @@ int GOST_CipherInit_ex(GOST_cipher_ctx *ctx, const GOST_cipher *cipher,
         ctx->iv_len = GOST_cipher_iv_length(cipher);
         ctx->key_len = keep_key_len > 0 ? keep_key_len : GOST_cipher_key_length(cipher);
 
-        if (!(ctx->flags & EVP_CIPHER_CTX_FLAG_WRAP_ALLOW)
-            && GOST_cipher_mode(cipher) == EVP_CIPH_WRAP_MODE)
-            return 0;
-
         /*
          * Match EVP_CipherInit_ex() semantics for repeated init of the same
          * cipher: preserve algorithm state unless the cipher itself changes.
@@ -307,6 +303,10 @@ int GOST_CipherInit_ex(GOST_cipher_ctx *ctx, const GOST_cipher *cipher,
             if (GOST_cipher_ctx_ctrl(ctx, EVP_CTRL_INIT, 0, NULL) <= 0)
                 return 0;
         }
+
+        if (!(ctx->flags & EVP_CIPHER_CTX_FLAG_WRAP_ALLOW)
+            && GOST_cipher_mode(cipher) == EVP_CIPH_WRAP_MODE)
+            return 0;
     }
 
     if (enc >= 0)
