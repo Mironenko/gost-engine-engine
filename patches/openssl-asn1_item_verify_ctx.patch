@@ -1,0 +1,39 @@
+diff --git a/openssl/crypto/asn1/a_verify.c b/openssl/crypto/asn1/a_verify.c
+index f6cac80..4378625 100644
+--- a/openssl/crypto/asn1/a_verify.c
++++ b/openssl/crypto/asn1/a_verify.c
+@@ -112,6 +112,7 @@ int ASN1_item_verify_ctx(const ASN1_ITEM *it, const X509_ALGOR *alg,
+                          EVP_MD_CTX *ctx)
+ {
+     EVP_PKEY *pkey;
++    EVP_MD *type = NULL;
+     unsigned char *buf_in = NULL;
+     int ret = -1, inl = 0;
+     int mdnid, pknid;
+@@ -152,8 +153,6 @@ int ASN1_item_verify_ctx(const ASN1_ITEM *it, const X509_ALGOR *alg,
+         if (ret <= 1)
+             goto err;
+     } else {
+-        const EVP_MD *type = NULL;
+-
+         /*
+          * We don't yet have the ability for providers to be able to handle
+          * X509_ALGOR style parameters. Fortunately the only one that needs this
+@@ -179,6 +178,9 @@ int ASN1_item_verify_ctx(const ASN1_ITEM *it, const X509_ALGOR *alg,
+ 
+             if (mdnid != NID_undef) {
+                 type = EVP_get_digestbynid(mdnid);
++                if (!type)
++                    type = EVP_MD_fetch(NULL, OBJ_nid2sn(mdnid), NULL);
++                    
+                 if (type == NULL) {
+                     ERR_raise_data(ERR_LIB_ASN1,
+                                    ASN1_R_UNKNOWN_MESSAGE_DIGEST_ALGORITHM,
+@@ -220,6 +222,7 @@ int ASN1_item_verify_ctx(const ASN1_ITEM *it, const X509_ALGOR *alg,
+     }
+     ret = 1;
+  err:
++    EVP_MD_free(type);
+     OPENSSL_clear_free(buf_in, inll);
+     return ret;
+ }

@@ -12,6 +12,7 @@
 #include <openssl/core_dispatch.h>
 #include <openssl/core_names.h>
 #include "gost_prov.h"
+#include "gost_cipher_ctx.h"
 #include "gost_lcl.h"
 
 /*
@@ -48,6 +49,7 @@ the provider for encryption/decryption operations. ."
  * they are correctly defined further down.  For the algorithm specific ones
  * MAKE_FUNCTIONS() does it for us.
  */
+
 static OSSL_FUNC_cipher_dupctx_fn cipher_dupctx;
 static OSSL_FUNC_cipher_freectx_fn cipher_freectx;
 static OSSL_FUNC_cipher_get_ctx_params_fn cipher_get_ctx_params;
@@ -58,25 +60,9 @@ static OSSL_FUNC_cipher_update_fn cipher_update;
 static OSSL_FUNC_cipher_final_fn cipher_final;
 
 struct gost_prov_crypt_ctx_st {
-    /* Provider context */
     PROV_CTX *provctx;
-    /* OSSL_PARAM descriptors */
-    const OSSL_PARAM *known_params;
-    /* GOST_cipher descriptor */
     GOST_cipher *descriptor;
-
-    /*
-     * Since existing functionality is designed for ENGINEs, the functions
-     * in this file are accomodated and are simply wrappers that use a local
-     * EVP_CIPHER and EVP_CIPHER_CTX.
-     * Future development should take a more direct approach and have the
-     * appropriate cipher functions and cipher data directly in this context.
-     */
-
-    /* The EVP_CIPHER created from |descriptor| */
-    EVP_CIPHER *cipher;
-    /* The context for the EVP_CIPHER functions */
-    EVP_CIPHER_CTX *cctx;
+    GOST_cipher_ctx *cctx;
 };
 typedef struct gost_prov_crypt_ctx_st GOST_CTX;
 
@@ -84,31 +70,28 @@ static void cipher_freectx(void *vgctx)
 {
     GOST_CTX *gctx = vgctx;
 
-    /*
-     * We don't free gctx->cipher here.
-     * That will be done by the provider teardown, via
-     * GOST_prov_deinit_ciphers() (defined at the bottom of this file).
-     */
-    EVP_CIPHER_CTX_free(gctx->cctx);
+    if (gctx == NULL)
+        return;
+    GOST_cipher_ctx_free(gctx->cctx);
     OPENSSL_free(gctx);
 }
 
-static GOST_CTX *cipher_newctx(void *provctx, GOST_cipher *descriptor,
-                                const OSSL_PARAM *known_params)
+static GOST_CTX *cipher_newctx(void *provctx, GOST_cipher *descriptor)
 {
-    GOST_CTX *gctx = NULL;
+    GOST_CTX *gctx = OPENSSL_zalloc(sizeof(*gctx));
 
-    if ((gctx = OPENSSL_zalloc(sizeof(*gctx))) != NULL) {
-        gctx->provctx = provctx;
-        gctx->known_params = known_params;
-        gctx->descriptor = descriptor;
-        gctx->cipher = GOST_init_cipher(descriptor);
-        gctx->cctx = EVP_CIPHER_CTX_new();
-
-        if (gctx->cipher == NULL || gctx->cctx == NULL) {
-            cipher_freectx(gctx);
-            gctx = NULL;
-        }
+    if (gctx == NULL)
+        return NULL;
+    gctx->provctx = provctx;
+    gctx->descriptor = descriptor;
+    if (!GOST_cipher_init(descriptor)) {
+        cipher_freectx(gctx);
+        return NULL;
+    }
+    gctx->cctx = GOST_cipher_ctx_new();
+    if (gctx->cctx == NULL) {
+        cipher_freectx(gctx);
+        return NULL;
     }
     return gctx;
 }
@@ -116,29 +99,30 @@ static GOST_CTX *cipher_newctx(void *provctx, GOST_cipher *descriptor,
 static void *cipher_dupctx(void *vsrc)
 {
     GOST_CTX *src = vsrc;
-    GOST_CTX *dst =
-        cipher_newctx(src->provctx, src->descriptor, src->known_params);
+    GOST_CTX *dst = cipher_newctx(src->provctx, src->descriptor);
 
-    if (dst != NULL)
-        EVP_CIPHER_CTX_copy(dst->cctx, src->cctx);
+    if (dst != NULL && !GOST_cipher_ctx_copy(dst->cctx, src->cctx)) {
+        cipher_freectx(dst);
+        dst = NULL;
+    }
     return dst;
 }
 
-static int cipher_get_params(EVP_CIPHER *c, OSSL_PARAM params[])
+static int cipher_get_params(const GOST_cipher *c, OSSL_PARAM params[])
 {
     OSSL_PARAM *p;
 
     if (((p = OSSL_PARAM_locate(params, "blocksize")) != NULL
-         && !OSSL_PARAM_set_size_t(p, EVP_CIPHER_block_size(c)))
+         && !OSSL_PARAM_set_size_t(p, (size_t)GOST_cipher_block_size(c)))
         || ((p = OSSL_PARAM_locate(params, "ivlen")) != NULL
-            && !OSSL_PARAM_set_size_t(p, EVP_CIPHER_iv_length(c)))
+            && !OSSL_PARAM_set_size_t(p, (size_t)GOST_cipher_iv_length(c)))
         || ((p = OSSL_PARAM_locate(params, "keylen")) != NULL
-            && !OSSL_PARAM_set_size_t(p, EVP_CIPHER_key_length(c)))
+            && !OSSL_PARAM_set_size_t(p, (size_t)GOST_cipher_key_length(c)))
         || ((p = OSSL_PARAM_locate(params, "mode")) != NULL
-            && !OSSL_PARAM_set_size_t(p, EVP_CIPHER_flags(c)))
+            && !OSSL_PARAM_set_size_t(p, (size_t)GOST_cipher_flags(c)))
         || ((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_AEAD)) != NULL
-            && (strcmp(EVP_CIPHER_name(c), "magma-mgm") == 0
-                || strcmp(EVP_CIPHER_name(c), "kuznyechik-mgm") == 0)
+            && (GOST_cipher_nid(c) == magma_mgm_cipher.nid
+                || GOST_cipher_nid(c) == grasshopper_mgm_cipher.nid)
             && !OSSL_PARAM_set_size_t(p, 1)))
         return 0;
     return 1;
@@ -149,7 +133,7 @@ static int cipher_get_ctx_params(void *vgctx, OSSL_PARAM params[])
     GOST_CTX *gctx = vgctx;
     OSSL_PARAM *p;
 
-    if (!cipher_get_params(gctx->cipher, params))
+    if (!cipher_get_params(gctx->descriptor, params))
         return 0;
     if ((p = OSSL_PARAM_locate(params, "alg_id_param")) != NULL) {
         ASN1_TYPE *algidparam = NULL;
@@ -158,29 +142,45 @@ static int cipher_get_ctx_params(void *vgctx, OSSL_PARAM params[])
         int ret;
 
         ret = (algidparam = ASN1_TYPE_new()) != NULL
-            && EVP_CIPHER_param_to_asn1(gctx->cctx, algidparam) > 0
+            && (gctx->descriptor->set_asn1_parameters == NULL
+                || gctx->descriptor->set_asn1_parameters(gctx->cctx, algidparam) > 0)
             && (derlen = i2d_ASN1_TYPE(algidparam, &der)) >= 0
-            && OSSL_PARAM_set_octet_string(p, &der, (size_t)derlen);
+            && OSSL_PARAM_set_octet_string(p, der, (size_t)derlen);
 
         OPENSSL_free(der);
         ASN1_TYPE_free(algidparam);
         return ret;
     }
-    if ((p = OSSL_PARAM_locate(params, "updated-iv")) != NULL) {
-        const void *iv = EVP_CIPHER_CTX_iv(gctx->cctx);
-        size_t ivlen = EVP_CIPHER_CTX_iv_length(gctx->cctx);
-
-        if (!OSSL_PARAM_set_octet_ptr(p, iv, ivlen)
-            && !OSSL_PARAM_set_octet_string(p, iv, ivlen))
+    if ((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_KEYLEN)) != NULL) {
+        if (!OSSL_PARAM_set_size_t(p,
+                (size_t)GOST_cipher_key_length(gctx->descriptor)))
             return 0;
+    }
+    if (((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_IV)) != NULL)
+        && !OSSL_PARAM_set_octet_ptr(p,
+                GOST_cipher_ctx_iv(gctx->cctx),
+                (size_t)GOST_cipher_ctx_iv_length(gctx->cctx))
+        && !OSSL_PARAM_set_octet_string(p,
+                GOST_cipher_ctx_iv(gctx->cctx),
+                (size_t)GOST_cipher_ctx_iv_length(gctx->cctx))) {
+        return 0;
+    }
+    if (((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_UPDATED_IV)) != NULL)
+        && !OSSL_PARAM_set_octet_ptr(p,
+                GOST_cipher_ctx_iv(gctx->cctx),
+                (size_t)GOST_cipher_ctx_iv_length(gctx->cctx))
+        && !OSSL_PARAM_set_octet_string(p,
+                GOST_cipher_ctx_iv(gctx->cctx),
+                (size_t)GOST_cipher_ctx_iv_length(gctx->cctx))) {
+        return 0;
     }
     if ((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_AEAD_TAG)) != NULL) {
         void *tag = NULL;
         size_t taglen = 0;
 
-        if (!OSSL_PARAM_get_octet_string_ptr(p, (const void**)&tag, &taglen)
-            || EVP_CIPHER_CTX_ctrl(gctx->cctx, EVP_CTRL_AEAD_GET_TAG,
-                                   taglen, tag) <= 0)
+        if (!OSSL_PARAM_get_octet_string_ptr(p, (const void **)&tag, &taglen)
+            || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_AEAD_GET_TAG,
+                                    (int)taglen, tag) <= 0)
             return 0;
     }
     return 1;
@@ -199,60 +199,55 @@ static int cipher_set_ctx_params(void *vgctx, const OSSL_PARAM params[])
 
         ret = OSSL_PARAM_get_octet_string_ptr(p, (const void **)&der, &derlen)
             && (algidparam = d2i_ASN1_TYPE(NULL, &der, (long)derlen)) != NULL
-            && EVP_CIPHER_asn1_to_param(gctx->cctx, algidparam) > 0;
+            && (gctx->descriptor->get_asn1_parameters == NULL
+                || gctx->descriptor->get_asn1_parameters(gctx->cctx, algidparam) > 0);
 
         ASN1_TYPE_free(algidparam);
         return ret;
     }
     if ((p = OSSL_PARAM_locate_const(params, "padding")) != NULL) {
         unsigned int pad = 0;
-
         if (!OSSL_PARAM_get_uint(p, &pad)
-            || EVP_CIPHER_CTX_set_padding(gctx->cctx, pad) <= 0)
+            || !GOST_cipher_ctx_set_padding(gctx->cctx, (int)pad))
             return 0;
     }
     if ((p = OSSL_PARAM_locate_const(params, "key-mesh")) != NULL) {
         size_t key_mesh = 0;
-
         if (!OSSL_PARAM_get_size_t(p, &key_mesh)
-            || EVP_CIPHER_CTX_ctrl(gctx->cctx, EVP_CTRL_KEY_MESH,
-                                   key_mesh, NULL) <= 0)
+            || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_KEY_MESH,
+                                    (int)key_mesh, NULL) <= 0)
+            return 0;
+    }
+    if ((p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_AEAD_TAG)) != NULL) {
+        unsigned char tag[1024];
+        void *val = tag;
+        size_t taglen = 0;
+        if (!OSSL_PARAM_get_octet_string(p, &val, sizeof(tag), &taglen)
+            || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_AEAD_SET_TAG,
+                                    (int)taglen, tag) <= 0)
             return 0;
     }
     if ((p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_IVLEN)) != NULL) {
         size_t ivlen = 0;
-
         if (!OSSL_PARAM_get_size_t(p, &ivlen)
-            || EVP_CIPHER_CTX_ctrl(gctx->cctx, EVP_CTRL_AEAD_SET_IVLEN,
-                                   ivlen, NULL) <= 0)
-            return 0;
-    }
-    if ((p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_AEAD_TAG)) != NULL) {
-        char tag[1024];
-        void *val = (void *) tag;
-        size_t taglen = 0;
-
-        if (!OSSL_PARAM_get_octet_string(p, &val, 1024, &taglen)
-            || EVP_CIPHER_CTX_ctrl(gctx->cctx, EVP_CTRL_AEAD_SET_TAG,
-                                   taglen, &tag) <= 0)
+            || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_AEAD_SET_IVLEN,
+                                    (int)ivlen, NULL) <= 0)
             return 0;
     }
     if ((p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_TLSTREE)) != NULL) {
         const void *val = NULL;
         size_t arg = 0;
-
         if (!OSSL_PARAM_get_octet_string_ptr(p, &val, &arg)
-            || EVP_CIPHER_CTX_ctrl(gctx->cctx, EVP_CTRL_TLSTREE,
-                                   arg, (void *)val) <= 0)
+            || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_TLSTREE,
+                                    (int)arg, (void *)val) <= 0)
             return 0;
     }
     if ((p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_TLSTREE_MODE)) != NULL) {
         const void *val = NULL;
         size_t arg = 0;
-
         if (!OSSL_PARAM_get_octet_string_ptr(p, &val, &arg)
-            || EVP_CIPHER_CTX_ctrl(gctx->cctx, EVP_CTRL_SET_TLSTREE_PARAMS,
-                                   arg, (void *)val) <= 0)
+            || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_SET_TLSTREE_PARAMS,
+                                    (int)arg, (void *)val) <= 0)
             return 0;
     }
     return 1;
@@ -266,12 +261,10 @@ static int cipher_encrypt_init(void *vgctx,
     GOST_CTX *gctx = vgctx;
 
     if (!cipher_set_ctx_params(vgctx, params)
-        || keylen > EVP_CIPHER_key_length(gctx->cipher)
-        || ivlen > EVP_CIPHER_iv_length(gctx->cipher))
+        || keylen > (size_t)GOST_cipher_key_length(gctx->descriptor)
+        || ivlen > (size_t)GOST_cipher_iv_length(gctx->descriptor))
         return 0;
-
-    return EVP_CipherInit_ex(gctx->cctx, gctx->cipher, gctx->provctx->e,
-                             key, iv, 1);
+    return GOST_CipherInit_ex(gctx->cctx, gctx->descriptor, key, iv, 1);
 }
 
 static int cipher_decrypt_init(void *vgctx,
@@ -282,11 +275,10 @@ static int cipher_decrypt_init(void *vgctx,
     GOST_CTX *gctx = vgctx;
 
     if (!cipher_set_ctx_params(vgctx, params)
-        || keylen > EVP_CIPHER_key_length(gctx->cipher)
-        || ivlen > EVP_CIPHER_iv_length(gctx->cipher))
+        || keylen > (size_t)GOST_cipher_key_length(gctx->descriptor)
+        || ivlen > (size_t)GOST_cipher_iv_length(gctx->descriptor))
         return 0;
-    return EVP_CipherInit_ex(gctx->cctx, gctx->cipher, gctx->provctx->e,
-                             key, iv, 0) > 0;
+    return GOST_CipherInit_ex(gctx->cctx, gctx->descriptor, key, iv, 0);
 }
 
 static int cipher_update(void *vgctx,
@@ -294,59 +286,43 @@ static int cipher_update(void *vgctx,
                          const unsigned char *in, size_t inl)
 {
     GOST_CTX *gctx = vgctx;
-    int int_outl = outl != NULL ? *outl : 0;
-    int res = EVP_CipherUpdate(gctx->cctx, out, &int_outl, in, (int)inl);
+    int int_outl = 0;
 
-    if (res > 0 && outl != NULL)
+    if (out == NULL && outsize != 0
+        && (GOST_cipher_flags(gctx->descriptor) & EVP_CIPH_FLAG_CUSTOM_CIPHER) == 0)
+        return 0;
+    if (!GOST_CipherUpdate(gctx->cctx, out, &int_outl, in, (int)inl))
+        return 0;
+    if (outl != NULL)
         *outl = (size_t)int_outl;
-    return res > 0;
+    return 1;
 }
 
 static int cipher_final(void *vgctx,
                         unsigned char *out, size_t *outl, size_t outsize)
 {
     GOST_CTX *gctx = vgctx;
-    int int_outl = outl != NULL ? *outl : 0;
-    int res = EVP_CipherFinal(gctx->cctx, out, &int_outl);
+    int int_outl = 0;
 
-    if (res > 0 && outl != NULL)
+    if (!GOST_CipherFinal(gctx->cctx, out, &int_outl))
+        return 0;
+    if (outl != NULL)
         *outl = (size_t)int_outl;
-    return res > 0;
+    return 1;
 }
 
-static const OSSL_PARAM *known_Gost28147_89_cipher_params;
-static const OSSL_PARAM *known_Gost28147_89_cbc_cipher_params;
-static const OSSL_PARAM *known_Gost28147_89_cnt_cipher_params;
-static const OSSL_PARAM *known_Gost28147_89_cnt_12_cipher_params;
-static const OSSL_PARAM *known_grasshopper_ecb_cipher_params;
-static const OSSL_PARAM *known_grasshopper_cbc_cipher_params;
-static const OSSL_PARAM *known_grasshopper_cfb_cipher_params;
-static const OSSL_PARAM *known_grasshopper_ofb_cipher_params;
-static const OSSL_PARAM *known_grasshopper_ctr_cipher_params;
-static const OSSL_PARAM *known_magma_ctr_cipher_params;
-static const OSSL_PARAM *known_magma_ctr_acpkm_cipher_params;
-static const OSSL_PARAM *known_magma_ctr_acpkm_omac_cipher_params;
-static const OSSL_PARAM *known_magma_cbc_cipher_params;
-static const OSSL_PARAM *known_magma_mgm_cipher_params;
-static const OSSL_PARAM *known_grasshopper_ctr_acpkm_cipher_params;
-static const OSSL_PARAM *known_grasshopper_ctr_acpkm_omac_cipher_params;
-static const OSSL_PARAM *known_grasshopper_mgm_cipher_params;
-/*
- * These are named like the EVP_CIPHER templates in gost_crypt.c, with the
- * added suffix "_functions".  Hopefully, that makes it easy to find the
- * actual implementation.
- */
 typedef void (*fptr_t)(void);
 #define MAKE_FUNCTIONS(name)                                            \
     static OSSL_FUNC_cipher_get_params_fn name##_get_params;            \
     static int name##_get_params(OSSL_PARAM *params)                    \
     {                                                                   \
-        return cipher_get_params(GOST_init_cipher(&name), params);      \
+        GOST_cipher_init(&name);                                        \
+        return cipher_get_params(&name, params);                        \
     }                                                                   \
     static OSSL_FUNC_cipher_newctx_fn name##_newctx;                    \
     static void *name##_newctx(void *provctx)                           \
     {                                                                   \
-        return cipher_newctx(provctx, &name, known_##name##_params);    \
+        return cipher_newctx(provctx, &name);                           \
     }                                                                   \
     static const OSSL_DISPATCH name##_functions[] = {                   \
         { OSSL_FUNC_CIPHER_GET_PARAMS, (fptr_t)name##_get_params },     \
@@ -380,7 +356,6 @@ MAKE_FUNCTIONS(grasshopper_ctr_acpkm_cipher);
 MAKE_FUNCTIONS(grasshopper_ctr_acpkm_omac_cipher);
 MAKE_FUNCTIONS(grasshopper_mgm_cipher);
 
-/* The OSSL_ALGORITHM for the provider's operation query function */
 const OSSL_ALGORITHM GOST_prov_ciphers[] = {
     { SN_id_Gost28147_89 ":gost89:GOST 28147-89:1.2.643.2.2.21", NULL,
       Gost28147_89_cipher_functions },
@@ -414,28 +389,4 @@ const OSSL_ALGORITHM GOST_prov_ciphers[] = {
 };
 
 void GOST_prov_deinit_ciphers(void) {
-    static GOST_cipher *list[] = {
-        &Gost28147_89_cipher,
-        &Gost28147_89_cnt_cipher,
-        &Gost28147_89_cnt_12_cipher,
-        &Gost28147_89_cbc_cipher,
-        &grasshopper_ecb_cipher,
-        &grasshopper_cbc_cipher,
-        &grasshopper_cfb_cipher,
-        &grasshopper_ofb_cipher,
-        &grasshopper_ctr_cipher,
-        &magma_cbc_cipher,
-        &magma_ctr_cipher,
-        &magma_ctr_acpkm_cipher,
-        &magma_ctr_acpkm_omac_cipher,
-        &magma_mgm_cipher,
-        &grasshopper_ctr_acpkm_cipher,
-        &grasshopper_ctr_acpkm_omac_cipher,
-        &grasshopper_mgm_cipher,
-    };
-    size_t i;
-#define elems(l) (sizeof(l) / sizeof(l[0]))
-
-    for (i = 0; i < elems(list); i++)
-        GOST_deinit_cipher(list[i]);
 }

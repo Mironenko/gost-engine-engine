@@ -162,7 +162,7 @@ set(GOST_ERR_SOURCE_FILES
         e_gost_err.h
         )
 
-set(GOST_CORE_SOURCE_FILES
+set(GOST_COMMON_CORE_SOURCE_FILES
         gost_ameth.c
         gost_pmeth.c
         gost_ctl.c
@@ -180,6 +180,8 @@ set(GOST_CORE_SOURCE_FILES
         gost_keyexpimp.c
         gost_digest.c
         gost_digest_ctx.c
+        gost_cipher.c
+        gost_cipher_ctx.c
         )
 
 set(GOST_EC_SOURCE_FILES
@@ -200,8 +202,8 @@ set (GOST_OMAC_SOURCE_FILES
         gost_omac_acpkm.c
         )
 
-set(GOST_LIB_SOURCE_FILES
-        ${GOST_CORE_SOURCE_FILES}
+set(GOST_COMMON_CORE_SOURCE_FILES
+        ${GOST_COMMON_CORE_SOURCE_FILES}
         ${GOST_GRASSHOPPER_SOURCE_FILES}
         ${GOST_EC_SOURCE_FILES}
         ${GOST_OMAC_SOURCE_FILES}
@@ -211,6 +213,7 @@ set(GOST_ENGINE_SOURCE_FILES
         gost_eng.c
         gost_eng_digest.c
         gost_eng_digest_define.c
+        gost_eng_cipher.c
         )
 
 set(GOST_PROV_SOURCE_FILES
@@ -265,6 +268,15 @@ set_tests_properties(ciphers-with-engine
   PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_ENGINE}")
 add_test(NAME ciphers-with-provider COMMAND test_ciphers)
 set_tests_properties(ciphers-with-provider
+  PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_PROVIDER}")
+
+add_executable(test_provider_cipher_params test_provider_cipher_params.c)
+target_link_libraries(test_provider_cipher_params OpenSSL::Crypto)
+if(TLS13_PATCHED_OPENSSL)
+  target_compile_definitions(test_provider_cipher_params PRIVATE TLS13_PATCHED_OPENSSL=1)
+endif()
+add_test(NAME provider-cipher-params COMMAND test_provider_cipher_params)
+set_tests_properties(provider-cipher-params
   PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_PROVIDER}")
 
 # test_curves is an internals testing program, it doesn't need a test env
@@ -407,7 +419,7 @@ add_library(gosttls12additional STATIC ${GOST_TLS12_ADDITIONAL_SOURCE_FILES})
 set_target_properties(gosttls12additional PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gosttls12additional PRIVATE OpenSSL::Crypto gost_err)
 
-add_library(gost_core STATIC ${GOST_LIB_SOURCE_FILES})
+add_library(gost_core STATIC ${GOST_COMMON_CORE_SOURCE_FILES})
 set_target_properties(gost_core PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gost_core PRIVATE OpenSSL::Crypto gost89 gosthash gosthash2012 gosttls12additional)
 
@@ -416,7 +428,8 @@ set_target_properties(gost_err PROPERTIES POSITION_INDEPENDENT_CODE ON)
 target_link_libraries(gost_err PRIVATE OpenSSL::Crypto)
 
 # The GOST engine in module form
-add_library(gost_engine MODULE ${GOST_ENGINE_SOURCE_FILES})
+add_library(gost_engine MODULE
+  ${GOST_ENGINE_SOURCE_FILES})
 # Set the suffix explicitly to adapt to OpenSSL's idea of what a
 # module suffix should be
 set_target_properties(gost_engine PROPERTIES
@@ -438,7 +451,7 @@ add_subdirectory(libprov)
 
 # The GOST provider in module form
 add_library(gost_prov MODULE
-  ${GOST_PROV_SOURCE_FILES} ${GOST_ENGINE_SOURCE_FILES}
+  ${GOST_PROV_SOURCE_FILES}
   )
 set_target_properties(gost_prov PROPERTIES
   PREFIX "" OUTPUT_NAME "gostprov" SUFFIX ${CMAKE_SHARED_LIBRARY_SUFFIX}
@@ -449,7 +462,7 @@ target_link_libraries(gost_prov PRIVATE gost_core libprov)
 if (NOT MSVC)
 # The GOST provider in library form
 add_library(lib_gost_prov SHARED
-  ${GOST_PROV_SOURCE_FILES} ${GOST_ENGINE_SOURCE_FILES}
+  ${GOST_PROV_SOURCE_FILES}
   )
 set_target_properties(lib_gost_prov PROPERTIES
   OUTPUT_NAME "gostprov"
