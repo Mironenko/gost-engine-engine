@@ -32,52 +32,6 @@ GOST_digest GostR3411_94_digest_legacy = {
     .cleanup = gost_digest_cleanup,
 };
 
-/*
- * Single level template accessor.
- * Note: that you cannot template 0 value.
- */
-#define TPL(st,field) ( \
-    ((st)->field) ? ((st)->field) : TPL_VAL(st,field) \
-)
-
-#define TPL_VAL(st,field) ( \
-    ((st)->template ? (st)->template->field : 0) \
-)
-
-EVP_MD *GOST_init_digest(GOST_digest *d)
-{
-    if (d->digest)
-        return d->digest;
-
-    EVP_MD *md;
-    if (!(md = EVP_MD_meth_new(d->nid, NID_undef))
-        || !EVP_MD_meth_set_result_size(md, TPL(d, result_size))
-        || !EVP_MD_meth_set_input_blocksize(md, TPL(d, input_blocksize))
-        || !EVP_MD_meth_set_app_datasize(md, TPL(d, app_datasize))
-        || !EVP_MD_meth_set_flags(md, d->flags | TPL_VAL(d, flags))
-        || !EVP_MD_meth_set_init(md, TPL(d, init))
-        || !EVP_MD_meth_set_update(md, TPL(d, update))
-        || !EVP_MD_meth_set_final(md, TPL(d, final))
-        || !EVP_MD_meth_set_copy(md, TPL(d, copy))
-        || !EVP_MD_meth_set_cleanup(md, TPL(d, cleanup))
-        || !EVP_MD_meth_set_ctrl(md, TPL(d, ctrl))) {
-        EVP_MD_meth_free(md);
-        md = NULL;
-    }
-    if (md && d->alias)
-        EVP_add_digest_alias(EVP_MD_name(md), d->alias);
-    d->digest = md;
-    return md;
-}
-
-void GOST_deinit_digest(GOST_digest *d)
-{
-    if (d->alias)
-        EVP_delete_digest_alias(d->alias);
-    EVP_MD_meth_free(d->digest);
-    d->digest = NULL;
-}
-
 static int gost_digest_init(EVP_MD_CTX *ctx)
 {
     struct ossl_gost_digest_ctx *c = EVP_MD_CTX_md_data(ctx);

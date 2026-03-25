@@ -348,9 +348,6 @@ struct gost_digest_st {
 };
 typedef struct gost_digest_st GOST_digest;
 
-EVP_MD *GOST_init_digest(GOST_digest *d);
-void GOST_deinit_digest(GOST_digest *d);
-
 /* Internal functions */
 EC_KEY * internal_ec_paramgen(int sign_param_nid);
 int internal_ec_ctrl(struct gost_pmeth_data *pctx, int pkey_nid,
