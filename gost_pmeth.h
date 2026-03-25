@@ -37,8 +37,6 @@ int pkey_gost_derive_init(EVP_PKEY_CTX *ctx);
 int pkey_gost_mac_init(EVP_PKEY_CTX *ctx);
 void pkey_gost_mac_cleanup(EVP_PKEY_CTX *ctx);
 int pkey_gost_mac_copy(EVP_PKEY_CTX *dst, ossl3_const EVP_PKEY_CTX *src);
-int pkey_gost_mac_ctrl(EVP_PKEY_CTX *ctx, int type, int p1, void *p2);
-int pkey_gost_mac_ctrl_str(EVP_PKEY_CTX *ctx, const char *type, const char *value);
 
 int pkey_gost_magma_mac_init(EVP_PKEY_CTX *ctx);
 int pkey_gost_grasshopper_mac_init(EVP_PKEY_CTX *ctx);
