@@ -299,7 +299,11 @@ int GOST_CipherInit_ex(GOST_cipher_ctx *ctx, const GOST_cipher *cipher,
             && GOST_cipher_mode(cipher) == EVP_CIPH_WRAP_MODE)
             return 0;
 
-        if ((GOST_cipher_flags(cipher) & EVP_CIPH_CTRL_INIT) != 0) {
+        /*
+         * Match EVP_CipherInit_ex() semantics for repeated init of the same
+         * cipher: preserve algorithm state unless the cipher itself changes.
+         */
+        if (!same_cipher && (GOST_cipher_flags(cipher) & EVP_CIPH_CTRL_INIT) != 0) {
             if (GOST_cipher_ctx_ctrl(ctx, EVP_CTRL_INIT, 0, NULL) <= 0)
                 return 0;
         }

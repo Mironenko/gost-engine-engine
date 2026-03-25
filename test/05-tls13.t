@@ -34,6 +34,9 @@ for my $t (@tests) {
     my @cmd = (
         $openssl_bin, "s_client",
         "-connect", "$t->{host}:$t->{port}", "-tls1_3", "-no_ign_eof",
+        # OpenSSL 3.6 applies the TLS security level to certificate loading,
+        # and the public GOST test PKI does not satisfy the default policy.
+        "-cipher", "DEFAULT:\@SECLEVEL=0",
         "-ciphersuites", $t->{ciphersuite},
         "-curves", $t->{curve},
         "-sigalgs", $t->{sigalg},
