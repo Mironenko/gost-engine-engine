@@ -170,7 +170,7 @@ set(GOST_LEGACY_CORE_SOURCE_FILES
         gost_keywrap.h
         gost_md.c
         gost_md2012.c
-        gost_omac.c
+        # gost_omac.c
         gost_omac_acpkm.c
         gost_gost2015.c
         gost_lcl.h
@@ -212,7 +212,7 @@ set(GOST_CMAC_ACPKM_SOURCE_FILES
         )
 
 set (GOST_OMAC_SOURCE_FILES
-        gost_omac.c
+        # gost_omac.c
         gost_omac_acpkm.c
         )
 
@@ -229,6 +229,7 @@ set(GOST_ENGINE_SOURCE_FILES
         gost_eng_pmeth.c
         gost_eng_ameth.c
         gost_eng_ctl.c
+        gost_eng_omac.c
         gost_eng_crypt.c
         )
 

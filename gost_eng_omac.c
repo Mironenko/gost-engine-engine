@@ -13,6 +13,7 @@
 
 #include "e_gost_err.h"
 #include "gost_lcl.h"
+#include "gost_eng_lcl.h"
 #include "gost_tls12_additional.h"
 
 #define min(a,b) (((a) < (b)) ? (a) : (b))
