@@ -1465,7 +1465,7 @@ static int magma_get_asn1_parameters(EVP_CIPHER_CTX *ctx, ASN1_TYPE *params)
 
 	c->key_meshing = 8192;
 
-	if (gost2015_get_asn1_params(params, MAGMA_UKM_LEN, iv, 4, c->kdf_seed) == 0)
+	if (gost2015_get_asn1_params(params, MAGMA_UKM_LEN, iv, 4, c->kdf_seed) < 0)
 	    return -1;
 
 	memcpy(EVP_CIPHER_CTX_iv_noconst(ctx), iv, sizeof(iv));

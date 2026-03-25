@@ -389,6 +389,3 @@ const OSSL_ALGORITHM GOST_prov_ciphers[] = {
 #endif
     { NULL , NULL, NULL }
 };
-
-void GOST_prov_deinit_ciphers(void) {
-}
