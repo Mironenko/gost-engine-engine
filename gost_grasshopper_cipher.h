@@ -13,6 +13,7 @@ extern "C" {
 #endif
 
 #include "gost_grasshopper_defines.h"
+#include "gost_cipher_ctx.h"
 
 #include "gost_lcl.h"
 #include <openssl/evp.h>

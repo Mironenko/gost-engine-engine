@@ -17,6 +17,7 @@
 #include "gost_gost2015.h"
 #include "gost_tls12_additional.h"
 #include "gost_digest_details.h"
+#include "gost_cipher_ctx.h"
 
 #if !defined(CCGOST_DEBUG) && !defined(DEBUG)
 # ifndef NDEBUG
