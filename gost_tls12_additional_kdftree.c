@@ -35,9 +35,9 @@ int gost_kdftree2012_256(unsigned char *keyout, size_t keyout_len,
     unsigned char *len_ptr = NULL;
     uint32_t len_repr = be32(keyout_len * 8);
     size_t len_repr_len = 4;
-    const char *digest_name = OBJ_nid2sn(NID_id_GostR3411_2012_256);
     OSSL_PARAM params[] = {
-        OSSL_PARAM_utf8_string(OSSL_MAC_PARAM_DIGEST, (char *)digest_name, 0),
+        OSSL_PARAM_utf8_string(OSSL_MAC_PARAM_DIGEST,
+                               (char *)SN_id_GostR3411_2012_256, 0),
         OSSL_PARAM_END
     };
 

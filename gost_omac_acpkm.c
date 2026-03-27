@@ -14,7 +14,6 @@
 #include "e_gost_err.h"
 #include "gost_lcl.h"
 #include "gost_digest_details.h"
-#include "gost_grasshopper_cipher.h"
 
 #define ACPKM_T_MAX (EVP_MAX_KEY_LENGTH + EVP_MAX_BLOCK_LENGTH)
 
