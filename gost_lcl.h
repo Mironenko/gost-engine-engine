@@ -72,8 +72,6 @@ int gost_set_default_param(int param, const char *value);
 void gost_param_free(void);
 
 /* method registration */
-int register_ameth_gost(int nid, EVP_PKEY_ASN1_METHOD **ameth,
-                        const char *pemstr, const char *info);
 int register_pmeth_gost(int id, EVP_PKEY_METHOD **pmeth, int flags);
 
 /* Gost-specific pmeth control-function parameters */
