@@ -47,7 +47,7 @@ static EVP_CIPHER *GOST_init_cipher(GOST_cipher *c)
         OPENSSL_assert(!(flags & EVP_CIPH_CUSTOM_IV));
 
     EVP_CIPHER *cipher = NULL;
-    if (!(cipher = EVP_CIPHER_meth_new(c->nid, block_size,
+    if (!(cipher = EVP_CIPHER_meth_new(GOST_cipher_nid(c), block_size,
                                        GOST_cipher_key_length(c)))
         || !EVP_CIPHER_meth_set_iv_length(cipher, GOST_cipher_iv_length(c))
         || !EVP_CIPHER_meth_set_flags(cipher, flags)
@@ -114,7 +114,7 @@ static GOST_cipher *gost_cipher_from_nid(int nid)
     size_t i;
 
     for (i = 0; i < sizeof(list) / sizeof(list[0]); i++) {
-        if (list[i]->nid == nid)
+        if (GOST_cipher_nid(list[i]) == nid)
             return list[i];
     }
     return NULL;

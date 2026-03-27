@@ -24,7 +24,7 @@ int GOST_CipherFinal(GOST_cipher_ctx *ctx, unsigned char *out, int *outl);
 /* GOST_cipher_ctx accessor functions */
 int GOST_cipher_ctx_block_size(GOST_cipher_ctx *ctx);
 unsigned char *GOST_cipher_ctx_buf_noconst(GOST_cipher_ctx *ctx);
-const struct gost_cipher_st *GOST_cipher_ctx_cipher(GOST_cipher_ctx *ctx);
+const GOST_cipher *GOST_cipher_ctx_cipher(GOST_cipher_ctx *ctx);
 int GOST_cipher_ctx_encrypting(GOST_cipher_ctx *ctx);
 int GOST_cipher_ctx_iv_length(GOST_cipher_ctx *ctx);
 const unsigned char *GOST_cipher_ctx_iv(GOST_cipher_ctx *ctx);

@@ -18,6 +18,7 @@
 #include "gost_lcl.h"
 #include "gost_tls12_additional.h"
 #include "e_gost_err.h"
+#include "gost_cipher_details.h"
 
 enum GRASSHOPPER_CIPHER_TYPE {
     GRASSHOPPER_CIPHER_ECB = 0,

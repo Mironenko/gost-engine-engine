@@ -1,4 +1,4 @@
-#include "gost_cipher.h"
+#include "gost_cipher_details.h"
 #include "gost_cipher_ctx.h"
 
 #define TPL_VAL(st, field) (((st) != NULL && (st)->template != NULL) \
