@@ -131,7 +131,6 @@ static const OSSL_ITEM *gost_get_reason_strings(void *provctx)
 /* The function that tears down this provider */
 static void gost_teardown(void *vprovctx)
 {
-    GOST_prov_deinit_ciphers();
     GOST_prov_deinit_digests();
     GOST_prov_deinit_macs();
     provider_ctx_free(vprovctx);
