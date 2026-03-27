@@ -48,7 +48,9 @@ void ERR_GOST_error(int function, int reason, char *file, int line)
 static void provider_ctx_free(PROV_CTX *ctx)
 {
     if (ctx != NULL) {
+#if GOST_ENABLE_LEGACY
         ENGINE_free(ctx->e);
+#endif
         proverr_free_handle(ctx->proverr_handle);
         OSSL_LIB_CTX_free(ctx->libctx);
     }
@@ -63,9 +65,12 @@ static PROV_CTX *provider_ctx_new(const OSSL_CORE_HANDLE *core,
 
     if ((ctx = OPENSSL_zalloc(sizeof(*ctx))) != NULL
         && (ctx->proverr_handle = proverr_new_handle(core, in)) != NULL
-        && (ctx->libctx = OSSL_LIB_CTX_new_child(core, in)) != NULL
+        && (ctx->libctx = OSSL_LIB_CTX_new_child(core, in)) != NULL 
+#if GOST_ENABLE_LEGACY
         && (ctx->e = ENGINE_new()) != NULL
-        && populate_gost_engine(ctx->e)) {
+        && populate_gost_engine(ctx->e)
+#endif
+        ) {
         ctx->core_handle = core;
 
         /* Ugly hack */
