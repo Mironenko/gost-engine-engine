@@ -23,24 +23,12 @@ int gost_engine_cipher_set_asn1_parameters(EVP_CIPHER_CTX *ctx,
 int gost_engine_cipher_get_asn1_parameters(EVP_CIPHER_CTX *ctx,
                                            ASN1_TYPE *params);
 
-/*
- * Single level template accessor.
- * Note: that you cannot template 0 value.
- */
-#define TPL(st,field) ( \
-    ((st)->field) ? ((st)->field) : TPL_VAL(st,field) \
-)
-
-#define TPL_VAL(st,field) ( \
-    ((st)->template ? (st)->template->field : 0) \
-)
-
 static EVP_CIPHER *GOST_init_cipher(GOST_cipher *c)
 {
-    GOST_cipher_init(c);
     /* Some sanity checking. */
-    int flags = c->flags | TPL_VAL(c, flags) | EVP_CIPH_CUSTOM_COPY;
-    int block_size = TPL(c, block_size);
+    int flags = GOST_cipher_flags(c) | EVP_CIPH_CUSTOM_COPY;
+    int block_size = GOST_cipher_block_size(c);
+
     switch (flags & EVP_CIPH_MODE) {
     case EVP_CIPH_CBC_MODE:
     case EVP_CIPH_ECB_MODE:
@@ -53,14 +41,15 @@ static EVP_CIPHER *GOST_init_cipher(GOST_cipher *c)
         OPENSSL_assert(flags & EVP_CIPH_NO_PADDING);
     }
 
-    if (TPL(c, iv_len))
+    if (GOST_cipher_iv_length(c) != 0)
         OPENSSL_assert(flags & EVP_CIPH_CUSTOM_IV);
     else
         OPENSSL_assert(!(flags & EVP_CIPH_CUSTOM_IV));
 
     EVP_CIPHER *cipher = NULL;
-    if (!(cipher = EVP_CIPHER_meth_new(c->nid, block_size, TPL(c, key_len)))
-        || !EVP_CIPHER_meth_set_iv_length(cipher, TPL(c, iv_len))
+    if (!(cipher = EVP_CIPHER_meth_new(c->nid, block_size,
+                                       GOST_cipher_key_length(c)))
+        || !EVP_CIPHER_meth_set_iv_length(cipher, GOST_cipher_iv_length(c))
         || !EVP_CIPHER_meth_set_flags(cipher, flags)
         || !EVP_CIPHER_meth_set_init(cipher, gost_engine_cipher_init)
         || !EVP_CIPHER_meth_set_do_cipher(cipher, gost_engine_cipher_do_cipher)
@@ -247,10 +236,10 @@ int gost_engine_cipher_set_asn1_parameters(EVP_CIPHER_CTX *ctx,
     if (gctx == NULL)
         return 0;
     desc = GOST_cipher_ctx_cipher(gctx);
-    if (desc == NULL || desc->set_asn1_parameters == NULL)
+    if (desc == NULL || GOST_cipher_set_asn1_parameters_fn(desc) == NULL)
         return 1;
 
-    return desc->set_asn1_parameters(gctx, params);
+    return GOST_cipher_set_asn1_parameters_fn(desc)(gctx, params);
 }
 
 int gost_engine_cipher_get_asn1_parameters(EVP_CIPHER_CTX *ctx,
@@ -262,10 +251,10 @@ int gost_engine_cipher_get_asn1_parameters(EVP_CIPHER_CTX *ctx,
     if (gctx == NULL)
         return 0;
     desc = GOST_cipher_ctx_cipher(gctx);
-    if (desc == NULL || desc->get_asn1_parameters == NULL)
+    if (desc == NULL || GOST_cipher_get_asn1_parameters_fn(desc) == NULL)
         return 1;
 
-    return desc->get_asn1_parameters(gctx, params);
+    return GOST_cipher_get_asn1_parameters_fn(desc)(gctx, params);
 }
 
 /* Define engine-exposed instances for all GOST ciphers */

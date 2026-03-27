@@ -26,7 +26,6 @@ struct gost_cipher_st {
 
 typedef struct gost_cipher_st GOST_cipher;
 
-int GOST_cipher_init(GOST_cipher *c);
 int GOST_cipher_type(const GOST_cipher *c);
 int GOST_cipher_nid(const GOST_cipher *c);
 int GOST_cipher_flags(const GOST_cipher *c);
@@ -39,6 +38,10 @@ int (*GOST_cipher_init_fn(const GOST_cipher *c))(struct gost_cipher_ctx_st *ctx,
                                                  const unsigned char *key,
                                                  const unsigned char *iv,
                                                  int enc);
+int (*GOST_cipher_set_asn1_parameters_fn(const GOST_cipher *c))(struct gost_cipher_ctx_st *ctx,
+                                                                ASN1_TYPE *params);
+int (*GOST_cipher_get_asn1_parameters_fn(const GOST_cipher *c))(struct gost_cipher_ctx_st *ctx,
+                                                                ASN1_TYPE *params);
 int (*GOST_cipher_do_cipher_fn(const GOST_cipher *c))(struct gost_cipher_ctx_st *ctx,
                                                       unsigned char *out,
                                                       const unsigned char *in,

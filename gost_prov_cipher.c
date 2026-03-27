@@ -100,8 +100,7 @@ static GOST_CTX *cipher_newctx(void *provctx, GOST_cipher *cipher)
     if ((gctx = OPENSSL_zalloc(sizeof(*gctx))) != NULL) {
         gctx->provctx = provctx;
         gctx->cipher = cipher;
-        if (!GOST_cipher_init(cipher)
-            || (gctx->cctx = GOST_cipher_ctx_new()) == NULL) {
+        if ((gctx->cctx = GOST_cipher_ctx_new()) == NULL) {
             cipher_freectx(gctx);
             gctx = NULL;
         }
@@ -156,8 +155,9 @@ static int cipher_get_ctx_params(void *vgctx, OSSL_PARAM params[])
         int ret;
 
         ret = (algidparam = ASN1_TYPE_new()) != NULL
-            && (gctx->cipher->set_asn1_parameters == NULL
-                || gctx->cipher->set_asn1_parameters(gctx->cctx, algidparam) > 0)
+            && (GOST_cipher_set_asn1_parameters_fn(gctx->cipher) == NULL
+                || GOST_cipher_set_asn1_parameters_fn(gctx->cipher)(gctx->cctx,
+                                                                    algidparam) > 0)
             && (derlen = i2d_ASN1_TYPE(algidparam, &der)) >= 0
             && OSSL_PARAM_set_octet_string(p, &der, (size_t)derlen);
 
@@ -198,8 +198,9 @@ static int cipher_set_ctx_params(void *vgctx, const OSSL_PARAM params[])
 
         ret = OSSL_PARAM_get_octet_string_ptr(p, (const void **)&der, &derlen)
             && (algidparam = d2i_ASN1_TYPE(NULL, &der, (long)derlen)) != NULL
-            && (gctx->cipher->get_asn1_parameters == NULL
-                || gctx->cipher->get_asn1_parameters(gctx->cctx, algidparam) > 0);
+            && (GOST_cipher_get_asn1_parameters_fn(gctx->cipher) == NULL
+                || GOST_cipher_get_asn1_parameters_fn(gctx->cipher)(gctx->cctx,
+                                                                    algidparam) > 0);
 
         ASN1_TYPE_free(algidparam);
         return ret;
@@ -317,7 +318,6 @@ typedef void (*fptr_t)(void);
     static OSSL_FUNC_cipher_get_params_fn name##_get_params;            \
     static int name##_get_params(OSSL_PARAM *params)                    \
     {                                                                   \
-        GOST_cipher_init(&name);                                        \
         return cipher_get_params(&name, params);                        \
     }                                                                   \
     static OSSL_FUNC_cipher_newctx_fn name##_newctx;                    \
