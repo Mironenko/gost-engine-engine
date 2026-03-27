@@ -209,6 +209,7 @@ set(GOST_LIB_SOURCE_FILES
 
 set(GOST_ENGINE_SOURCE_FILES
         gost_eng.c
+        gost_eng_ameth.c
         gost_eng_digest.c
         gost_eng_digest_define.c
         )
