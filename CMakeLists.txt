@@ -182,6 +182,7 @@ set(GOST_COMMON_CORE_SOURCE_FILES
         gost_digest_ctx.c
         gost_cipher.c
         gost_cipher_ctx.c
+        gost_cipher_ctx_prov.c
         )
 
 set(GOST_EC_SOURCE_FILES

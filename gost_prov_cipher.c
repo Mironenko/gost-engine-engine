@@ -11,6 +11,7 @@
 #include <openssl/core.h>
 #include <openssl/core_dispatch.h>
 #include <openssl/core_names.h>
+#include <limits.h>
 #include "gost_prov.h"
 #include "gost_cipher_ctx.h"
 #include "gost_lcl.h"
@@ -68,6 +69,25 @@ struct gost_prov_crypt_ctx_st {
 };
 typedef struct gost_prov_crypt_ctx_st GOST_CTX;
 
+static int cipher_validate_init_inputs(const GOST_CTX *gctx,
+                                       const unsigned char *key, size_t keylen,
+                                       const unsigned char *iv, size_t ivlen)
+{
+    if (key != NULL && keylen != (size_t)GOST_cipher_key_length(gctx->cipher))
+        return 0;
+
+    if (iv != NULL) {
+        if ((GOST_cipher_flags(gctx->cipher) & EVP_CIPH_FLAG_AEAD_CIPHER) != 0) {
+            if (ivlen == 0 || ivlen > EVP_MAX_IV_LENGTH)
+                return 0;
+        } else if (ivlen != (size_t)GOST_cipher_iv_length(gctx->cipher)) {
+            return 0;
+        }
+    }
+
+    return 1;
+}
+
 static void cipher_freectx(void *vgctx)
 {
     GOST_CTX *gctx = vgctx;
@@ -118,10 +138,10 @@ static int cipher_get_params(const GOST_cipher *c, OSSL_PARAM params[])
         || ((p = OSSL_PARAM_locate(params, "keylen")) != NULL
             && !OSSL_PARAM_set_size_t(p, (size_t)GOST_cipher_key_length(c)))
         || ((p = OSSL_PARAM_locate(params, "mode")) != NULL
-            && !OSSL_PARAM_set_size_t(p, (size_t)GOST_cipher_flags(c)))
+            && !OSSL_PARAM_set_uint(p, (unsigned int)GOST_cipher_mode(c)))
         || ((p = OSSL_PARAM_locate(params, OSSL_CIPHER_PARAM_AEAD)) != NULL
             && (c == &magma_mgm_cipher || c == &grasshopper_mgm_cipher)
-            && !OSSL_PARAM_set_size_t(p, 1)))
+            && !OSSL_PARAM_set_int(p, 1)))
         return 0;
     return 1;
 }
@@ -144,7 +164,7 @@ static int cipher_get_ctx_params(void *vgctx, OSSL_PARAM params[])
                 || GOST_cipher_set_asn1_parameters_fn(gctx->cipher)(gctx->cctx,
                                                                     algidparam) > 0)
             && (derlen = i2d_ASN1_TYPE(algidparam, &der)) >= 0
-            && OSSL_PARAM_set_octet_string(p, &der, (size_t)derlen);
+            && OSSL_PARAM_set_octet_string(p, der, (size_t)derlen);
 
         OPENSSL_free(der);
         ASN1_TYPE_free(algidparam);
@@ -247,8 +267,7 @@ static int cipher_encrypt_init(void *vgctx,
     GOST_CTX *gctx = vgctx;
 
     if (!cipher_set_ctx_params(vgctx, params)
-        || keylen > (size_t)GOST_cipher_key_length(gctx->cipher)
-        || ivlen > (size_t)GOST_cipher_iv_length(gctx->cipher))
+        || !cipher_validate_init_inputs(gctx, key, keylen, iv, ivlen))
         return 0;
 
     return GOST_CipherInit_ex(gctx->cctx, gctx->cipher, key, iv, 1);
@@ -262,8 +281,7 @@ static int cipher_decrypt_init(void *vgctx,
     GOST_CTX *gctx = vgctx;
 
     if (!cipher_set_ctx_params(vgctx, params)
-        || keylen > (size_t)GOST_cipher_key_length(gctx->cipher)
-        || ivlen > (size_t)GOST_cipher_iv_length(gctx->cipher))
+        || !cipher_validate_init_inputs(gctx, key, keylen, iv, ivlen))
         return 0;
     return GOST_CipherInit_ex(gctx->cctx, gctx->cipher, key, iv, 0);
 }
@@ -273,24 +291,20 @@ static int cipher_update(void *vgctx,
                          const unsigned char *in, size_t inl)
 {
     GOST_CTX *gctx = vgctx;
-    int int_outl = outl != NULL ? *outl : 0;
-    int res = GOST_CipherUpdate(gctx->cctx, out, &int_outl, in, (int)inl);
 
-    if (res > 0 && outl != NULL)
-        *outl = (size_t)int_outl;
-    return res > 0;
+    if (inl > (size_t)INT_MAX)
+        return 0;
+
+    return GOST_cipher_ctx_provider_update(gctx->cctx, out, outl, outsize,
+                                           in, inl);
 }
 
 static int cipher_final(void *vgctx,
                         unsigned char *out, size_t *outl, size_t outsize)
 {
     GOST_CTX *gctx = vgctx;
-    int int_outl = outl != NULL ? *outl : 0;
-    int res = GOST_CipherFinal(gctx->cctx, out, &int_outl);
 
-    if (res > 0 && outl != NULL)
-        *outl = (size_t)int_outl;
-    return res > 0;
+    return GOST_cipher_ctx_provider_final(gctx->cctx, out, outl, outsize);
 }
 
 /*
