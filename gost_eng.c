@@ -18,6 +18,7 @@
 #include "gost_lcl.h"
 #include "gost-engine.h"
 #include "gost_eng_ameth.h"
+#include "gost_eng_pmeth.h"
 #include "gost_eng_digest.h"
 #include "gost_eng_cipher.h"
 #include <assert.h>

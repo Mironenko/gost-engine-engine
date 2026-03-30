@@ -216,6 +216,7 @@ set(GOST_ENGINE_SOURCE_FILES
         gost_eng_digest.c
         gost_eng_digest_define.c
         gost_eng_cipher.c
+        gost_eng_pmeth.c
         )
 
 set(GOST_PROV_SOURCE_FILES
