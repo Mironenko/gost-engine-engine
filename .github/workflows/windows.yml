@@ -25,7 +25,7 @@ jobs:
               run: |
                   git apply patches/openssl-tls1.3.patch
                   git apply patches/openssl-asn1_item_verify_ctx.patch
-                  git apply patches/openssl-get_digestbynid.patch
+                  git apply patches/openssl-x509-libctx-fetch.patch
             - uses: ilammy/msvc-dev-cmd@v1
             - name: Build OpenSSL
               if: steps.cache.outputs.cache-hit != 'true'
