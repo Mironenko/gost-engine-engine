@@ -915,7 +915,7 @@ static int test_cert(struct test_cert *tc)
     T(x = d2i_X509(NULL, &p, tc->len));
 
     X509_PUBKEY *xk;
-    TE(xk = X509_get_X509_PUBKEY(x));
+    TE(xk = (X509_PUBKEY *)X509_get_X509_PUBKEY(x));
 
     /* Output algo and parameters. */
     X509_ALGOR *palg;
@@ -930,8 +930,8 @@ static int test_cert(struct test_cert *tc)
     /* Low level access to parameters in case X509_get0_pubkey does not work. */
     T(pptype == V_ASN1_SEQUENCE);
     STACK_OF(ASN1_TYPE) *seq;
-    p = pval->data;
-    T(seq = d2i_ASN1_SEQUENCE_ANY(NULL, &p, pval->length));
+    p = ASN1_STRING_get0_data(pval);
+    T(seq = d2i_ASN1_SEQUENCE_ANY(NULL, &p, ASN1_STRING_length(pval)));
     ASN1_TYPE *p1; /* First parameter is curve OID. */
     T(p1 = sk_ASN1_TYPE_value(seq, 0));
     int param_nid = OBJ_obj2nid((ASN1_OBJECT *)(p1->value.ptr));
@@ -1016,7 +1016,7 @@ static int test_cert(struct test_cert *tc)
     T(mdtype = EVP_get_digestbynid(hash_nid));
     T(EVP_VerifyInit(md_ctx, mdtype));
     T(EVP_VerifyUpdate(md_ctx, tbs, tbs_len));
-    err = EVP_VerifyFinal(md_ctx, signature->data, signature->length, pk);
+    err = EVP_VerifyFinal(md_ctx, ASN1_STRING_get0_data(signature), ASN1_STRING_length(signature), pk);
     print_test_result(err);
     EVP_MD_CTX_free(md_ctx);
     ret |= err != 1;
