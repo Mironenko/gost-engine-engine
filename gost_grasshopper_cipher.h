@@ -109,6 +109,10 @@ static int gost_grasshopper_cipher_ctl(GOST_cipher_ctx* ctx, int type, int arg, 
 
 static int gost_grasshopper_mgm_ctrl(GOST_cipher_ctx *ctx, int type, int arg, void *ptr);
 
+#if GOST_ENABLE_LEGACY
+const EVP_CIPHER* cipher_gost_grasshopper_ctracpkm();
+#endif
+
 #if defined(__cplusplus)
 }
 #endif
