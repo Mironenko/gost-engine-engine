@@ -53,8 +53,21 @@ jobs:
 
     gcc-openssl-master:
         runs-on: ubuntu-latest
-        if: ${{ github.event_name == 'schedule' }}
+        if: ${{ github.event_name != 'schedule' }}
         env:
+            OPENSSL_BRANCH: master
+        steps:
+            - uses: actions/checkout@v2
+              with:
+                  submodules: true
+            - run: .github/before-script.sh
+            - run: .github/build-engine.sh
+
+    clang-openssl-master:
+        runs-on: ubuntu-latest
+        if: ${{ github.event_name != 'schedule' }}
+        env:
+            CC: clang
             OPENSSL_BRANCH: master
         steps:
             - uses: actions/checkout@v2
@@ -65,10 +78,11 @@ jobs:
 
     macos-openssl-master:
         runs-on: macos-latest
-        if: ${{ github.event_name == 'schedule' }}
+        if: ${{ github.event_name != 'schedule' }}
         env:
             OPENSSL_BRANCH: master
             USE_RPATH:
+            GOST_PROVIDER_ENABLE_ONLINE_TESTS: 0 # macOS runner has no network access to infotecs TLS1.3 server
         steps:
             - uses: actions/checkout@v2
               with:
