@@ -10,11 +10,11 @@ env:
     USE_RPATH: yes
     PATCH_OPENSSL: 0
     GOST_PROVIDER_ENABLE_ONLINE_TESTS: 1
+    GOST_ENABLE_LEGACY: ON
 
 jobs:
     gcc-openssl-stable:
         runs-on: ubuntu-latest
-        if: ${{ github.event_name != 'schedule' }}
         env:
             PATCH_OPENSSL: 1
         steps:
@@ -26,7 +26,6 @@ jobs:
 
     clang-openssl-stable:
         runs-on: ubuntu-latest
-        if: ${{ github.event_name != 'schedule' }}
         env:
             CC: clang
             PATCH_OPENSSL: 1
@@ -39,7 +38,6 @@ jobs:
 
     macos-openssl-stable:
         runs-on: macos-latest
-        if: ${{ github.event_name != 'schedule' }}
         env:
             USE_RPATH:
             PATCH_OPENSSL: 1
@@ -53,9 +51,22 @@ jobs:
 
     gcc-openssl-master:
         runs-on: ubuntu-latest
-        if: ${{ github.event_name == 'schedule' }}
         env:
             OPENSSL_BRANCH: master
+            GOST_ENABLE_LEGACY: OFF
+        steps:
+            - uses: actions/checkout@v2
+              with:
+                  submodules: true
+            - run: .github/before-script.sh
+            - run: .github/build-engine.sh
+
+    clang-openssl-master:
+        runs-on: ubuntu-latest
+        env:
+            CC: clang
+            OPENSSL_BRANCH: master
+            GOST_ENABLE_LEGACY: OFF
         steps:
             - uses: actions/checkout@v2
               with:
@@ -65,10 +76,11 @@ jobs:
 
     macos-openssl-master:
         runs-on: macos-latest
-        if: ${{ github.event_name == 'schedule' }}
         env:
             OPENSSL_BRANCH: master
+            GOST_ENABLE_LEGACY: OFF
             USE_RPATH:
+            GOST_PROVIDER_ENABLE_ONLINE_TESTS: 0 # macOS runner has no network access to infotecs TLS1.3 server
         steps:
             - uses: actions/checkout@v2
               with:
@@ -78,9 +90,9 @@ jobs:
 
     gcc-asan-openssl-master:
         runs-on: ubuntu-latest
-        if: ${{ github.event_name == 'schedule' }}
         env:
             OPENSSL_BRANCH: master
+            GOST_ENABLE_LEGACY: OFF
             ASAN: -DASAN=1
         steps:
             - uses: actions/checkout@v2
@@ -91,9 +103,9 @@ jobs:
 
     macos-asan-openssl-master:
         runs-on: macos-latest
-        if: ${{ github.event_name == 'schedule' }}
         env:
             OPENSSL_BRANCH: master
+            GOST_ENABLE_LEGACY: OFF
             ASAN: -DASAN=1
             USE_RPATH:
         steps:
@@ -119,3 +131,19 @@ jobs:
             - run: .github/before-script.sh
             - run: .github/build-engine.sh
 
+    gcc-openssl-master-x86:
+        runs-on: ubuntu-latest
+        if: ${{ github.event_name == 'schedule' }}
+        env:
+            CFLAGS: -m32
+            LDFLAGS: -m32
+            SETARCH: "setarch i386"
+            APT_INSTALL: gcc-multilib
+            OPENSSL_BRANCH: master
+            GOST_ENABLE_LEGACY: OFF
+        steps:
+            - uses: actions/checkout@v2
+              with:
+                  submodules: true
+            - run: .github/before-script.sh
+            - run: .github/build-engine.sh
