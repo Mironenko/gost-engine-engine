@@ -23,6 +23,9 @@
 static OSSL_FUNC_mac_dupctx_fn mac_dupctx;
 static OSSL_FUNC_mac_freectx_fn mac_freectx;
 static OSSL_FUNC_mac_init_fn mac_init;
+#if defined(OSSL_FUNC_MAC_INIT_SKEY)
+static OSSL_FUNC_mac_init_skey_fn mac_init_skey;
+#endif
 static OSSL_FUNC_mac_update_fn mac_update;
 static OSSL_FUNC_mac_final_fn mac_final;
 static OSSL_FUNC_mac_get_ctx_params_fn mac_get_ctx_params;
@@ -132,6 +135,37 @@ static int mac_init(void *mctx, const unsigned char *key,
             || GOST_digest_ctx_ctrl(gctx->dctx, EVP_MD_CTRL_SET_KEY,
                                (int)keylen, (void *)key) > 0);
 }
+
+#if defined(OSSL_FUNC_MAC_INIT_SKEY)
+static GOST_SKEY_TYPE mac_expected_skey_type(const GOST_DESC *descriptor)
+{
+    if (descriptor->digest_desc == &magma_omac_mac
+        || descriptor->digest_desc == &magma_ctracpkm_mac)
+        return GOST_SKEY_TYPE_MAGMA;
+    if (descriptor->digest_desc == &grasshopper_omac_mac
+        || descriptor->digest_desc == &grasshopper_ctracpkm_mac)
+        return GOST_SKEY_TYPE_GRASSHOPPER;
+    return GOST_SKEY_TYPE_GOST89;
+}
+
+static int mac_init_skey(void *mctx, void *keydata, const OSSL_PARAM params[])
+{
+    GOST_CTX *gctx = mctx;
+    GOST_SKEY *skey = keydata;
+
+    if (!mac_set_ctx_params(gctx, params))
+        return 0;
+    if (skey == NULL)
+        return 1;
+    if (skey->type != mac_expected_skey_type(gctx->descriptor)
+        || skey->raw_bytes == NULL)
+        return 0;
+
+    return GOST_digest_ctx_ctrl(gctx->dctx, EVP_MD_CTRL_SET_KEY,
+                                (int)skey->raw_bytes_len,
+                                (void *)skey->raw_bytes) > 0;
+}
+#endif
 
 static int mac_update(void *mctx, const unsigned char *in, size_t inl)
 {
@@ -289,6 +323,12 @@ static int mac_set_ctx_params(void *mctx, const OSSL_PARAM params[])
 }
 
 typedef void (*fptr_t)(void);
+#if defined(OSSL_FUNC_MAC_INIT_SKEY)
+# define OSSL_SKEY_MAC_DISPATCH                                         \
+        { OSSL_FUNC_MAC_INIT_SKEY, (fptr_t)mac_init_skey },
+#else
+# define OSSL_SKEY_MAC_DISPATCH
+#endif
 #define MAKE_FUNCTIONS(name, macsize)                                   \
     const GOST_DESC name##_desc = {                                     \
         &name,                                                          \
@@ -317,6 +357,7 @@ typedef void (*fptr_t)(void);
         { OSSL_FUNC_MAC_DUPCTX, (fptr_t)mac_dupctx },                   \
         { OSSL_FUNC_MAC_FREECTX, (fptr_t)mac_freectx },                 \
         { OSSL_FUNC_MAC_INIT, (fptr_t)mac_init },                       \
+        OSSL_SKEY_MAC_DISPATCH                                          \
         { OSSL_FUNC_MAC_UPDATE, (fptr_t)mac_update },                   \
         { OSSL_FUNC_MAC_FINAL, (fptr_t)mac_final },                     \
         { OSSL_FUNC_MAC_GETTABLE_CTX_PARAMS,                            \

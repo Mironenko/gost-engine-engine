@@ -8,7 +8,7 @@ include(CheckCSourceRuns)
 
 enable_testing()
 
-find_package(OpenSSL 3.4 REQUIRED)
+find_package(OpenSSL 3.5 REQUIRED)
 
 if(NOT CMAKE_BUILD_TYPE AND NOT CMAKE_CONFIGURATION_TYPES)
   message(STATUS "Setting build type to 'RelWithDebInfo' as none was specified.")
@@ -219,6 +219,7 @@ set(GOST_PROV_SOURCE_FILES
         gost_prov_cipher.c
         gost_prov_digest.c
         gost_prov_mac.c
+        gost_prov_skeymgmt.c
         gost_prov_keymgmt.c
         gost_prov_encoder.c
         gost_prov_signature.c
@@ -303,6 +304,12 @@ add_test(NAME TLS-with-engine COMMAND test_tls)
 set_tests_properties(TLS-with-engine
   PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_ENGINE}")
 
+add_executable(test_skey test_skey.c)
+target_link_libraries(test_skey OpenSSL::Crypto)
+add_test(NAME skey-with-provider COMMAND test_skey)
+set_tests_properties(skey-with-provider
+  PROPERTIES ENVIRONMENT "${TEST_ENVIRONMENT_PROVIDER}")
+
 add_executable(test_context test_context.c)
 target_link_libraries(test_context OpenSSL::Crypto)
 add_test(NAME context-with-engine COMMAND test_context)
@@ -383,6 +390,7 @@ set(BINARY_TESTS_TARGETS
         test_derive
         test_sign
         test_context
+        test_skey
         test_tls12additional
         test_gost89
         test_tls

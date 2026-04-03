@@ -54,6 +54,10 @@ static OSSL_FUNC_cipher_get_ctx_params_fn cipher_get_ctx_params;
 static OSSL_FUNC_cipher_set_ctx_params_fn cipher_set_ctx_params;
 static OSSL_FUNC_cipher_encrypt_init_fn cipher_encrypt_init;
 static OSSL_FUNC_cipher_decrypt_init_fn cipher_decrypt_init;
+#if defined(OSSL_FUNC_CIPHER_ENCRYPT_SKEY_INIT)
+static OSSL_FUNC_cipher_encrypt_skey_init_fn cipher_encrypt_skey_init;
+static OSSL_FUNC_cipher_decrypt_skey_init_fn cipher_decrypt_skey_init;
+#endif
 static OSSL_FUNC_cipher_update_fn cipher_update;
 static OSSL_FUNC_cipher_final_fn cipher_final;
 
@@ -274,6 +278,76 @@ static int cipher_encrypt_init(void *vgctx,
                              key, iv, 1);
 }
 
+#if defined(OSSL_FUNC_CIPHER_ENCRYPT_SKEY_INIT)
+const char *gost_skey_type_name(GOST_SKEY_TYPE type)
+{
+    switch (type) {
+    case GOST_SKEY_TYPE_GOST89:
+        return "gost89";
+    case GOST_SKEY_TYPE_MAGMA:
+        return "magma";
+    case GOST_SKEY_TYPE_GRASSHOPPER:
+        return "grasshopper";
+    default:
+        return "generic";
+    }
+}
+
+GOST_SKEY_TYPE gost_cipher_skey_type(const GOST_cipher *cipher)
+{
+    if (cipher == &grasshopper_ecb_cipher
+        || cipher == &grasshopper_cbc_cipher
+        || cipher == &grasshopper_cfb_cipher
+        || cipher == &grasshopper_ofb_cipher
+        || cipher == &grasshopper_ctr_cipher
+        || cipher == &grasshopper_ctr_acpkm_cipher
+        || cipher == &grasshopper_ctr_acpkm_omac_cipher
+        || cipher == &grasshopper_mgm_cipher)
+        return GOST_SKEY_TYPE_GRASSHOPPER;
+
+    if (cipher == &magma_cbc_cipher
+        || cipher == &magma_ctr_cipher
+        || cipher == &magma_ctr_acpkm_cipher
+        || cipher == &magma_ctr_acpkm_omac_cipher
+        || cipher == &magma_mgm_cipher)
+        return GOST_SKEY_TYPE_MAGMA;
+
+    return GOST_SKEY_TYPE_GOST89;
+}
+
+static int cipher_skey_init(void *vgctx, void *keydata,
+                            const unsigned char *iv, size_t ivlen,
+                            const OSSL_PARAM params[], int enc)
+{
+    GOST_CTX *gctx = vgctx;
+    GOST_SKEY *skey = keydata;
+    GOST_SKEY_TYPE expected_type = gost_cipher_skey_type(gctx->descriptor);
+
+    if (!cipher_set_ctx_params(vgctx, params)
+        || ivlen > EVP_CIPHER_iv_length(gctx->cipher))
+        return 0;
+
+    if (skey == NULL)
+        return EVP_CipherInit_ex(gctx->cctx, gctx->cipher, gctx->provctx->e,
+                                 NULL, iv, enc);
+
+    if (skey->type != expected_type
+        || skey->raw_bytes == NULL
+        || skey->raw_bytes_len > (size_t)EVP_CIPHER_key_length(gctx->cipher))
+        return 0;
+
+    return EVP_CipherInit_ex(gctx->cctx, gctx->cipher, gctx->provctx->e,
+                             skey->raw_bytes, iv, enc);
+}
+
+static int cipher_encrypt_skey_init(void *vgctx, void *keydata,
+                                    const unsigned char *iv, size_t ivlen,
+                                    const OSSL_PARAM params[])
+{
+    return cipher_skey_init(vgctx, keydata, iv, ivlen, params, 1);
+}
+#endif
+
 static int cipher_decrypt_init(void *vgctx,
                                const unsigned char *key, size_t keylen,
                                const unsigned char *iv, size_t ivlen,
@@ -288,6 +362,15 @@ static int cipher_decrypt_init(void *vgctx,
     return EVP_CipherInit_ex(gctx->cctx, gctx->cipher, gctx->provctx->e,
                              key, iv, 0) > 0;
 }
+
+#if defined(OSSL_FUNC_CIPHER_ENCRYPT_SKEY_INIT)
+static int cipher_decrypt_skey_init(void *vgctx, void *keydata,
+                                    const unsigned char *iv, size_t ivlen,
+                                    const OSSL_PARAM params[])
+{
+    return cipher_skey_init(vgctx, keydata, iv, ivlen, params, 0);
+}
+#endif
 
 static int cipher_update(void *vgctx,
                          unsigned char *out, size_t *outl, size_t outsize,
@@ -337,6 +420,15 @@ static const OSSL_PARAM *known_grasshopper_mgm_cipher_params;
  * actual implementation.
  */
 typedef void (*fptr_t)(void);
+#if defined(OSSL_FUNC_CIPHER_ENCRYPT_SKEY_INIT)
+# define OSSL_SKEY_CIPHER_DISPATCHS                                     \
+        { OSSL_FUNC_CIPHER_ENCRYPT_SKEY_INIT,                           \
+          (fptr_t)cipher_encrypt_skey_init },                           \
+        { OSSL_FUNC_CIPHER_DECRYPT_SKEY_INIT,                           \
+          (fptr_t)cipher_decrypt_skey_init },
+#else
+# define OSSL_SKEY_CIPHER_DISPATCHS
+#endif
 #define MAKE_FUNCTIONS(name)                                            \
     static OSSL_FUNC_cipher_get_params_fn name##_get_params;            \
     static int name##_get_params(OSSL_PARAM *params)                    \
@@ -357,6 +449,7 @@ typedef void (*fptr_t)(void);
         { OSSL_FUNC_CIPHER_SET_CTX_PARAMS, (fptr_t)cipher_set_ctx_params }, \
         { OSSL_FUNC_CIPHER_ENCRYPT_INIT, (fptr_t)cipher_encrypt_init }, \
         { OSSL_FUNC_CIPHER_DECRYPT_INIT, (fptr_t)cipher_decrypt_init }, \
+        OSSL_SKEY_CIPHER_DISPATCHS                                      \
         { OSSL_FUNC_CIPHER_UPDATE, (fptr_t)cipher_update },             \
         { OSSL_FUNC_CIPHER_FINAL, (fptr_t)cipher_final },               \
         { 0, NULL },                                                    \

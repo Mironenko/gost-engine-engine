@@ -107,6 +107,10 @@ static const OSSL_ALGORITHM *gost_operation(void *vprovctx,
         return GOST_prov_decoder;
     case OSSL_OP_KEYEXCH:
         return GOST_prov_keyexch;
+#if defined(OSSL_OP_SKEYMGMT)
+    case OSSL_OP_SKEYMGMT:
+        return GOST_prov_skeymgmt;
+#endif
     }
     return NULL;
 }

@@ -10,7 +10,10 @@
  **********************************************************************/
 
 #include <openssl/core.h>
+#include <openssl/core_dispatch.h>
+#include <openssl/core_names.h>
 #include <openssl/engine.h>
+#include "gost_lcl.h"
 
 /* OID constants for GOST algorithms */
 #define OID_id_GostR3410_2001        "1.2.643.2.2.19"
@@ -73,6 +76,25 @@ typedef struct gost_key_data_st
     int param_nid;
 } GOST_KEY_DATA;
 
+#if defined(OSSL_OP_SKEYMGMT)
+typedef enum gost_skey_type_st {
+    GOST_SKEY_TYPE_GENERIC = 0,
+    GOST_SKEY_TYPE_GOST89,
+    GOST_SKEY_TYPE_MAGMA,
+    GOST_SKEY_TYPE_GRASSHOPPER
+} GOST_SKEY_TYPE;
+
+typedef struct gost_skey_st {
+    GOST_SKEY_TYPE type;
+    unsigned char *raw_bytes;
+    size_t raw_bytes_len;
+    char *key_id;
+} GOST_SKEY;
+
+GOST_SKEY_TYPE gost_cipher_skey_type(const GOST_cipher *cipher);
+const char *gost_skey_type_name(GOST_SKEY_TYPE type);
+#endif
+
 int gost_get_max_keyexch_size(const GOST_KEY_DATA *);
 int gost_get_max_signature_size(const GOST_KEY_DATA *);
 
@@ -84,3 +106,6 @@ extern const OSSL_ALGORITHM GOST_prov_encoder[];
 extern const OSSL_ALGORITHM GOST_prov_signature[];
 extern const OSSL_ALGORITHM GOST_prov_decoder[];
 extern const OSSL_ALGORITHM GOST_prov_keyexch[];
+#if defined(OSSL_OP_SKEYMGMT)
+extern const OSSL_ALGORITHM GOST_prov_skeymgmt[];
+#endif
