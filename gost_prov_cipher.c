@@ -16,10 +16,6 @@
 #include "gost_cipher_ctx.h"
 #include "gost_lcl.h"
 
-#if GOST_ENABLE_LEGACY
-    #include "gost_eng_crypt.h"
-#endif
-
 /*
  * This definitions are added in the patch to OpenSSL 3.4.2 version to support
  * GOST TLS 1.3. Definitions below must be removed when the patch is added to
