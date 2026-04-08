@@ -7,7 +7,11 @@ include(CheckFunctionExists)
 include(CheckCSourceRuns)
 
 option(GOST_ENABLE_LEGACY "Build legacy ENGINE support" OFF)
-add_compile_definitions(GOST_ENABLE_LEGACY=$<BOOL:${GOST_ENABLE_LEGACY}>)
+if(GOST_ENABLE_LEGACY)
+  add_compile_definitions(GOST_ENABLE_LEGACY=ON)
+else()
+  add_compile_definitions(GOST_ENABLE_LEGACY=OFF OPENSSL_NO_ENGINE)
+endif()
 
 enable_testing()
 
