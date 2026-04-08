@@ -1,5 +1,8 @@
 #include "gost_eng_pmeth.h"
 
+#include <string.h>
+#include <stdlib.h>
+
 #include <openssl/objects.h>
 #include <openssl/x509v3.h>
 
