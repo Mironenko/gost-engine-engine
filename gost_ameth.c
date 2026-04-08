@@ -769,8 +769,12 @@ int internal_priv_decode(EC_KEY *ec, int *key_type,
     } else if (V_ASN1_OCTET_STRING == *p) {
         /* New format - Little endian octet string */
         ASN1_OCTET_STRING *s = d2i_ASN1_OCTET_STRING(NULL, &p, priv_len);
+        if (!s) {
+            GOSTerr(GOST_F_PRIV_DECODE_GOST, EVP_R_DECODE_ERROR);
+            return 0;
+        }
         const int sLength = ASN1_STRING_length(s);
-        if (!s || ((sLength != 32) && (sLength != 64))) {
+        if ((sLength != 32) && (sLength != 64)) {
             ASN1_STRING_free(s);
             GOSTerr(GOST_F_PRIV_DECODE_GOST, EVP_R_DECODE_ERROR);
             return 0;
@@ -1108,12 +1112,12 @@ int internal_pub_decode_ec(EC_KEY *ec, int *key_type, X509_ALGOR *palg,
 
     group = EC_KEY_get0_group(ec);
     octet = d2i_ASN1_OCTET_STRING(NULL, &pubkey_buf, pub_len);
-    const int octetLength = ASN1_STRING_length(octet);
 
     if (!octet) {
         GOSTerr(GOST_F_PUB_DECODE_GOST_EC, ERR_R_MALLOC_FAILURE);
         goto ret;
     }
+    const int octetLength = ASN1_STRING_length(octet);
     databuf = OPENSSL_malloc(octetLength);
     if (!databuf) {
         GOSTerr(GOST_F_PUB_DECODE_GOST_EC, ERR_R_MALLOC_FAILURE);
