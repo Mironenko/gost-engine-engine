@@ -8,15 +8,13 @@ on:
 env:
     OPENSSL_BRANCH: openssl-3.6.0
     USE_RPATH: yes
-    PATCH_OPENSSL: 0
+    PATCH_OPENSSL: 1
     GOST_PROVIDER_ENABLE_ONLINE_TESTS: 1
     GOST_ENABLE_LEGACY: ON
 
 jobs:
     gcc-openssl-stable:
         runs-on: ubuntu-latest
-        env:
-            PATCH_OPENSSL: 1
         steps:
             - uses: actions/checkout@v2
               with:
@@ -28,7 +26,6 @@ jobs:
         runs-on: ubuntu-latest
         env:
             CC: clang
-            PATCH_OPENSSL: 1
         steps:
             - uses: actions/checkout@v2
               with:
@@ -40,7 +37,7 @@ jobs:
         runs-on: macos-latest
         env:
             USE_RPATH:
-            PATCH_OPENSSL: 1
+
             GOST_PROVIDER_ENABLE_ONLINE_TESTS: 0 # macOS runner has no network access to infotecs TLS1.3 server
         steps:
             - uses: actions/checkout@v2
@@ -123,7 +120,6 @@ jobs:
             LDFLAGS: -m32
             SETARCH: "setarch i386"
             APT_INSTALL: gcc-multilib
-            PATCH_OPENSSL: 1
         steps:
             - uses: actions/checkout@v2
               with:
