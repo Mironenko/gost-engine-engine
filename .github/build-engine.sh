@@ -13,8 +13,5 @@ cmake -DTLS13_PATCHED_OPENSSL=$PATCH_OPENSSL -DOPENSSL_ROOT_DIR=$OPENSSL_INSTALL
 make
 make test CTEST_OUTPUT_ON_FAILURE=1
 if [ -z "${ASAN-}" ]; then
-    if [ "$GOST_ENABLE_LEGACY" = "ON" ]; then
-        make tcl_tests_engine
-    fi
-    make tcl_tests_provider
+    make tcl_tests
 fi
