@@ -249,11 +249,11 @@ static int cipher_set_ctx_params(void *vgctx, const OSSL_PARAM params[])
             return 0;
     }
     if ((p = OSSL_PARAM_locate_const(params, OSSL_CIPHER_PARAM_TLSTREE_MODE)) != NULL) {
-        const void *val = NULL;
-        size_t arg = 0;
-        if (!OSSL_PARAM_get_octet_string_ptr(p, &val, &arg)
+        const char *val = NULL;
+
+        if (!OSSL_PARAM_get_utf8_string_ptr(p, &val)
             || GOST_cipher_ctx_ctrl(gctx->cctx, EVP_CTRL_SET_TLSTREE_PARAMS,
-                                    (int)arg, (void *)val) <= 0)
+                                    0, (void *)val) <= 0)
             return 0;
     }
     return 1;

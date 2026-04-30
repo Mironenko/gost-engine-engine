@@ -11,7 +11,9 @@
  */
 
 #include <openssl/engine.h>
+#include <openssl/core_names.h>
 #include <openssl/evp.h>
+#include <openssl/params.h>
 #include <string.h>
 
 #include "gost_grasshopper_cipher.h"
@@ -139,6 +141,8 @@ const unsigned char mg_tlstree_e_tag[8] = {
     0xAD, 0x39, 0x1D, 0x97, 0x98, 0x71, 0x69, 0xF3
 };
 
+#define TLSTREE_SEQNUM_LEN 8
+
 static struct testcase {
     const char *sn;
     const unsigned char *key;
@@ -198,6 +202,68 @@ static struct testcase {
     { 0 }
 };
 
+static int set_iv_length(EVP_CIPHER_CTX *ctx, int is_provider, size_t ivlen)
+{
+    if (is_provider) {
+        OSSL_PARAM params[2];
+
+        params[0] = OSSL_PARAM_construct_size_t(OSSL_CIPHER_PARAM_IVLEN,
+                                                &ivlen);
+        params[1] = OSSL_PARAM_construct_end();
+
+        return EVP_CIPHER_CTX_set_params(ctx, params);
+    }
+
+    return EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, (int)ivlen,
+                               NULL) > 0;
+}
+
+static int set_tlstree_params(EVP_CIPHER_CTX *ctx, int is_provider,
+                              const char *tlstree_mode,
+                              const unsigned char *seqnum)
+{
+    if (is_provider) {
+        OSSL_PARAM mode_params[2];
+        OSSL_PARAM seq_params[2];
+
+        mode_params[0] = OSSL_PARAM_construct_utf8_string(
+            OSSL_CIPHER_PARAM_TLSTREE_MODE, (char *)tlstree_mode, 0);
+        mode_params[1] = OSSL_PARAM_construct_end();
+        if (!EVP_CIPHER_CTX_set_params(ctx, mode_params))
+            return 0;
+
+        seq_params[0] = OSSL_PARAM_construct_octet_string(
+            OSSL_CIPHER_PARAM_TLSTREE, (void *)seqnum, TLSTREE_SEQNUM_LEN);
+        seq_params[1] = OSSL_PARAM_construct_end();
+
+        return EVP_CIPHER_CTX_set_params(ctx, seq_params);
+    }
+
+    return EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_SET_TLSTREE_PARAMS, 0,
+                               (void *)tlstree_mode) > 0
+        && EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_TLSTREE, 0, (void *)seqnum) > 0;
+}
+
+static int process_tag(EVP_CIPHER_CTX *ctx, int is_provider, int set,
+                       size_t tag_len, void *tag)
+{
+    if (is_provider) {
+        OSSL_PARAM params[2];
+
+        params[0] = OSSL_PARAM_construct_octet_string(
+            OSSL_CIPHER_PARAM_AEAD_TAG, tag, tag_len);
+        params[1] = OSSL_PARAM_construct_end();
+
+        return set ? EVP_CIPHER_CTX_set_params(ctx, params)
+                   : EVP_CIPHER_CTX_get_params(ctx, params);
+    }
+
+    return EVP_CIPHER_CTX_ctrl(ctx, set ? EVP_CTRL_AEAD_SET_TAG
+                                        : EVP_CTRL_AEAD_GET_TAG,
+                               (int)tag_len,
+                               (void *)tag) > 0;
+}
+
 static int test_block(const EVP_CIPHER *ciph, const char *name, const unsigned char *nonce, size_t nlen,
                       const unsigned char *aad, size_t alen, const unsigned char *ptext, size_t plen,
                       const unsigned char *exp_ctext, const unsigned char *exp_tag,
@@ -210,6 +276,7 @@ static int test_block(const EVP_CIPHER *ciph, const char *name, const unsigned c
     unsigned char *t = alloca(tag_len);
     int outlen1, outlen2, tmplen;
     int ret = 0, rv, test, i;
+    int is_provider = EVP_CIPHER_get0_provider(ciph) != NULL;
 
     OPENSSL_assert(ctx);
     printf("Encryption test %s [%s]: ", name, small ? "small chunks" : "big chunks");
@@ -217,12 +284,11 @@ static int test_block(const EVP_CIPHER *ciph, const char *name, const unsigned c
     // test encrypt
     EVP_CIPHER_CTX_init(ctx);
     EVP_EncryptInit_ex(ctx, ciph, NULL, NULL, NULL);                    // Set cipher type and mode
-    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, nlen, NULL);      // Set IV length
+    T(set_iv_length(ctx, is_provider, nlen));                           // Set IV length
     EVP_EncryptInit_ex(ctx, NULL, NULL, key, nonce);                    // Initialise key and IV
 
     if (seqnum && tlstree_mode) {
-        EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_SET_TLSTREE_PARAMS, 0, (void *)tlstree_mode);
-        EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_TLSTREE, 0, (void *)seqnum);
+        T(set_tlstree_params(ctx, is_provider, tlstree_mode, seqnum));
     }
 
     memset(c, 0, plen);
@@ -245,7 +311,7 @@ static int test_block(const EVP_CIPHER *ciph, const char *name, const unsigned c
         }
     }
     EVP_EncryptFinal_ex(ctx, c, &tmplen);
-    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_GET_TAG, tag_len, t);
+    T(process_tag(ctx, is_provider, 0, tag_len, t));
     EVP_CIPHER_CTX_cleanup(ctx);
 
     TEST_ASSERT(outlen1 != alen || outlen2 != plen ||
@@ -258,12 +324,11 @@ static int test_block(const EVP_CIPHER *ciph, const char *name, const unsigned c
     printf("Decryption test %s [%s]: ", name, small ? "small chunks" : "big chunks");
     EVP_CIPHER_CTX_init(ctx);
     EVP_DecryptInit_ex(ctx, ciph, NULL, NULL, NULL);
-    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_IVLEN, nlen, NULL);
+    T(set_iv_length(ctx, is_provider, nlen));
     EVP_DecryptInit_ex(ctx, NULL, NULL, key, nonce);
 
     if (seqnum && tlstree_mode) {
-        EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_SET_TLSTREE_PARAMS, 0, (void *)tlstree_mode);
-        EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_TLSTREE, 0, (void *)seqnum);
+        T(set_tlstree_params(ctx, is_provider, tlstree_mode, seqnum));
     }
 
     memset(c, 0, plen);
@@ -285,7 +350,7 @@ static int test_block(const EVP_CIPHER *ciph, const char *name, const unsigned c
             outlen2 += tmplen;
         }
     }
-    EVP_CIPHER_CTX_ctrl(ctx, EVP_CTRL_AEAD_SET_TAG, tag_len, (void *)exp_tag);
+    T(process_tag(ctx, is_provider, 1, tag_len, (void *)exp_tag));
     rv = EVP_DecryptFinal_ex(ctx, c, &tmplen);
     EVP_CIPHER_CTX_cleanup(ctx);
     EVP_CIPHER_CTX_free(ctx);
